@@ -39,6 +39,4 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
-/android
+# generated native folders (committed for builds)
