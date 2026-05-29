@@ -7,6 +7,7 @@ import {
   setNotificationChannelAsync,
   addNotificationReceivedListener,
   addNotificationResponseReceivedListener,
+  setBadgeCountAsync,
   scheduleNotificationAsync,
   AndroidImportance,
   type ExpoPushToken,
@@ -24,7 +25,7 @@ setNotificationHandler({
     return {
       shouldShowAlert: true,
       shouldPlaySound: true,
-      shouldSetBadge: false,
+      shouldSetBadge: true,
       shouldShowBanner: true,
       shouldShowList: true,
     };
@@ -48,6 +49,8 @@ let responseListener: { remove: () => void } | null = null;
 
 export function setupNotificationListeners(): void {
   if (receivedListener) return;
+
+  setBadgeCountAsync(0);
 
   console.log('[NOTIFICATIONS] Setting up listeners...');
 

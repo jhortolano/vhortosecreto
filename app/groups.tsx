@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -37,7 +37,6 @@ type Grupo = {
 
 export default function GroupsScreen() {
   const { t } = useT();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { tab: tabParam } = useLocalSearchParams<{ tab?: Tab }>();
   const [encuestas, setEncuestas] = useState<Encuesta[]>([]);
@@ -68,35 +67,6 @@ export default function GroupsScreen() {
     };
     return map[tab];
   }, [tab, t]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerTitle: () => (
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerAppName}>{t('appName')}</Text>
-          <Text style={styles.headerTabTitle}>{headerTitle}</Text>
-        </View>
-      ),
-      headerRight: () => (
-        <Pressable onPress={() => router.push('/profile')}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
-          ) : (
-            <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
-              <MaterialIcons name="person" size={20} color="#FFF" />
-            </View>
-          )}
-        </Pressable>
-      ),
-      headerLeft: () => (
-        <Pressable onPress={() => router.push('/create-encuesta')}>
-          <View style={styles.headerNewBtn}>
-            <MaterialIcons name="add" size={24} color="#FFF" />
-          </View>
-        </Pressable>
-      ),
-    });
-  }, [navigation, avatarUrl, userNick, headerTitle, t]);
 
   const loadEncuestas = useCallback(async () => {
     setErrorMessage('');
@@ -329,6 +299,32 @@ export default function GroupsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.customHeader, { paddingTop: insets.top + 4 }]}>
+        <View style={styles.headerLeft}>
+          <Pressable onPress={() => router.push('/create-encuesta')}>
+            <View style={styles.headerNewBtn}>
+              <MaterialIcons name="add" size={24} color="#FFF" />
+            </View>
+          </Pressable>
+          <Text style={styles.headerAppName}>{t('appName')}</Text>
+        </View>
+
+        <Text style={styles.headerTabTitle}>{headerTitle}</Text>
+
+        <View style={styles.headerLeft}>
+          <Pressable onPress={() => router.push('/profile')}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
+                <MaterialIcons name="person" size={20} color="#FFF" />
+              </View>
+            )}
+          </Pressable>
+          <View style={styles.headerSpacer} />
+        </View>
+      </View>
+
       {tab === 'grupos' ? (
         <>
           <Pressable style={styles.newSurveyBtn} onPress={() => router.push('/crear-grupo')}>
@@ -485,6 +481,16 @@ export default function GroupsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  headerLeft: { alignItems: 'center', gap: 2 },
   headerNewBtn: {
     width: 36,
     height: 36,
@@ -492,11 +498,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#1F6FEB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
   },
-  headerCenter: { alignItems: 'center' },
-  headerAppName: { fontSize: 10, color: '#888', letterSpacing: 0.5 },
-  headerTabTitle: { fontSize: 17, fontWeight: '700' },
+  headerAppName: { fontSize: 9, color: '#999', letterSpacing: 0.3 },
+  headerSpacer: { height: 9 },
+  headerTabTitle: { fontSize: 32, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
   newSurveyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -520,7 +525,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
   },
-  headerAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 4 },
+  headerAvatar: { width: 36, height: 36, borderRadius: 18 },
   headerAvatarPlaceholder: { backgroundColor: '#1F6FEB', alignItems: 'center', justifyContent: 'center' },
   headerAvatarInitial: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   helper: { color: '#666', textAlign: 'center', marginTop: 24 },

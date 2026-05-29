@@ -109,6 +109,7 @@ serve(async (req) => {
             body,
             sound: 'default',
             priority: 'high',
+            badge: 1,
             channelId: 'vhorto-notificaciones',
             _android: { channelId: 'vhorto-notificaciones' },
             data: { encuesta_id: payload.encuesta_id, type: payload.type },

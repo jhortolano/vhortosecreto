@@ -38,7 +38,7 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ title: t('login'), headerShown: false }} />
         <Stack.Screen name="complete-profile" options={{ title: t('profileTitle'), ...backToHomeOptions }} />
-        <Stack.Screen name="groups" options={{ headerTitle: '' }} />
+        <Stack.Screen name="groups" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ title: t('myProfile'), ...backToHomeOptions }} />
         <Stack.Screen name="vote/[groupId]" options={{ title: t('appName'), ...backToHomeOptions }} />
         <Stack.Screen name="create-encuesta" options={{ headerShown: false }} />
