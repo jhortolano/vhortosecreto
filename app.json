@@ -1,17 +1,22 @@
 {
   "expo": {
-    "name": "VhortoSecreto",
+    "name": "Voto Secreto",
     "slug": "VhortoSecreto",
-    "version": "1.0.0",
+    "version": "1.0.1b",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vhortosecreto",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.VhortoSecreto",
+      "infoPlist": {
+        "CFBundleDisplayName": "Voto Secreto"
+      }
     },
     "android": {
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,7 +24,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ],
+      "package": "com.termibululu.vhortosecreto"
     },
     "web": {
       "output": "static",
@@ -27,6 +38,25 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-6861706201921698~1375807797",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "La app accede a tus contactos solo para que elijas quien participa en una encuesta."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La app necesita acceso a tus fotos para elegir la imagen de perfil."
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -38,11 +68,19 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "./plugins/withLocalizedAppName",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "39b9d279-72d2-4793-9fdc-8de00d760785"
+      }
     }
   }
 }
