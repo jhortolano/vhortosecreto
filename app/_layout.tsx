@@ -5,7 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CreateEncuestaProvider } from '@/context/createEncuestaContext';
 import { checkVersion } from '@/lib/versionCheck';
-import { setupNotificationListeners } from '@/lib/notifications';
+import { setupNotificationListeners, savePushToken } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
 import 'react-native-reanimated';
 
@@ -29,6 +30,9 @@ export default function RootLayout() {
     setupNotificationListeners();
     checkVersion().then((status) => {
       if (status === 'update_required') router.replace('/update-required');
+    });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) savePushToken(user.id);
     });
   }, []);
 

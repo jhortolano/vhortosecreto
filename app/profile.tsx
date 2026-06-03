@@ -138,23 +138,118 @@ export default function ProfileScreen() {
       return;
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('phone')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.phone) {
+      setErrorMessage(t('error'));
+      setIsSaving(false);
+      return;
+    }
+
+    const phone = profile.phone;
+
     const { error } = await supabase
       .from('profiles')
       .update({ nick: trimmed })
       .eq('id', user.id);
 
-    setIsSaving(false);
     if (error) {
       setErrorMessage(error.message);
+      setIsSaving(false);
       return;
     }
 
+    await Promise.all([
+      supabase.from('encuestas').update({ owner_nick: trimmed }).eq('owner', phone),
+      supabase.from('encuestas_usuarios').update({ nick_usuario: trimmed }).eq('phone_usuario', phone),
+      supabase.from('grupos_miembros').update({ nick: trimmed }).eq('phone', phone),
+    ]);
+
+    setIsSaving(false);
     setSuccessMessage(t('nickUpdated'));
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
     router.replace('/');
+  };
+
+  const deleteAccount = async () => {
+    Alert.alert(
+      t('deleteAccount'),
+      t('deleteAccountConfirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('delete'), style: 'destructive', onPress: confirmDeleteAccount },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.prompt
+      ? Alert.prompt(
+          t('deleteAccount'),
+          t('deleteAccountTypeConfirm'),
+          [
+            { text: t('cancel'), style: 'cancel' },
+            {
+              text: t('delete'),
+              style: 'destructive',
+              onPress: () => executeDeleteAccount(),
+            },
+          ],
+          'plain-text',
+          '',
+          'default'
+        )
+      : Alert.alert(
+          t('deleteAccount'),
+          t('deleteAccountConfirm'),
+          [
+            { text: t('cancel'), style: 'cancel' },
+            {
+              text: t('delete'),
+              style: 'destructive',
+              onPress: () => executeDeleteAccount(),
+            },
+          ]
+        );
+  };
+
+  const executeDeleteAccount = async () => {
+    setIsSaving(true);
+    setErrorMessage('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setErrorMessage(t('error'));
+        setIsSaving(false);
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('delete-account', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsSaving(false);
+        return;
+      }
+
+      setIsSaving(false);
+      await supabase.auth.signOut({ scope: 'local' });
+      router.replace('/');
+      return;
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : t('error'));
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -208,6 +303,10 @@ export default function ProfileScreen() {
 
         <Pressable style={styles.logoutButton} onPress={signOut}>
           <Text style={styles.logoutText}>{t('signOut')}</Text>
+        </Pressable>
+
+        <Pressable style={styles.deleteAccountButton} onPress={deleteAccount} disabled={isSaving}>
+          <Text style={styles.deleteAccountText}>{t('deleteAccount')}</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -306,5 +405,16 @@ const styles = StyleSheet.create({
     color: '#C62828',
     fontWeight: '600',
     fontSize: 16,
+  },
+  deleteAccountButton: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  deleteAccountText: {
+    color: '#999',
+    fontWeight: '400',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });

@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { fetchProfile, isProfileComplete } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
+import { savePushToken } from '@/lib/notifications';
 import { uploadAvatarFromUri } from '@/lib/uploadAvatar';
 import { countries, findCountryByDial, type Country } from '@/lib/countries';
 import { useT } from '@/lib/i18n';
@@ -145,6 +146,13 @@ export default function CompleteProfileScreen() {
         setIsSaving(false);
         return;
       }
+
+      savePushToken(user.id);
+
+      Promise.all([
+        supabase.from('encuestas_usuarios').update({ nick_usuario: trimmedNick }).eq('phone_usuario', fullPhone),
+        supabase.from('grupos_miembros').update({ nick: trimmedNick }).eq('phone', fullPhone),
+      ]).catch((e) => console.warn('[REGISTER] Error actualizando nicks pendientes:', e));
 
       router.replace('/groups');
     } catch (e) {

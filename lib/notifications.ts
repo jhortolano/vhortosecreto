@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import {
   getExpoPushTokenAsync,
   requestPermissionsAsync,
@@ -14,6 +14,7 @@ import {
   type Notification,
   type NotificationResponse,
 } from 'expo-notifications';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
@@ -46,11 +47,20 @@ if (Platform.OS === 'android') {
 
 let receivedListener: { remove: () => void } | null = null;
 let responseListener: { remove: () => void } | null = null;
+let appStateListener: { remove: () => void } | null = null;
+
+async function clearBadge(): Promise<void> {
+  try {
+    await setBadgeCountAsync(0);
+  } catch (e) {
+    console.warn('[NOTIFICATIONS] Error clearing badge:', e);
+  }
+}
 
 export function setupNotificationListeners(): void {
   if (receivedListener) return;
 
-  setBadgeCountAsync(0);
+  clearBadge();
 
   console.log('[NOTIFICATIONS] Setting up listeners...');
 
@@ -60,6 +70,7 @@ export function setupNotificationListeners(): void {
 
   responseListener = addNotificationResponseReceivedListener((response: NotificationResponse) => {
     console.log('[NOTIFICATIONS] NOTIFICATION TAPPED:', JSON.stringify(response));
+    clearBadge();
     const data = response.notification.request.content.data as Record<string, string> | undefined;
     const encuestaId = data?.encuesta_id;
     if (encuestaId) {
@@ -67,11 +78,19 @@ export function setupNotificationListeners(): void {
       router.push(`/vote/${encuestaId}`);
     }
   });
+
+  appStateListener = AppState.addEventListener('change', (nextState) => {
+    if (nextState === 'active') {
+      console.log('[NOTIFICATIONS] App became active, clearing badge');
+      clearBadge();
+    }
+  });
 }
 
 export function cleanupNotificationListeners(): void {
   if (receivedListener) { receivedListener.remove(); receivedListener = null; }
   if (responseListener) { responseListener.remove(); responseListener = null; }
+  if (appStateListener) { appStateListener.remove(); appStateListener = null; }
 }
 
 export async function registerForPushNotifications(): Promise<string | null> {
@@ -88,7 +107,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
     if (finalStatus !== 'granted') { console.log('[NOTIFICATIONS] Permission not granted'); return null; }
 
-    const tokenData: ExpoPushToken = await getExpoPushTokenAsync();
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenData: ExpoPushToken = await getExpoPushTokenAsync({ projectId });
     console.log('[NOTIFICATIONS] Token obtained:', tokenData.data);
     return tokenData.data;
   } catch (err) {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import Swipeable, { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { fetchProfile, isProfileComplete } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { useCreateEncuesta, type EncuestaContactPick } from '@/context/createEncuestaContext';
@@ -35,9 +35,12 @@ type Grupo = {
   imagen_url: string | null;
 };
 
+const TAB_ORDER: Tab[] = ['activas', 'grupos', 'votadas', 'finalizadas'];
+
 export default function GroupsScreen() {
   const { t } = useT();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { tab: tabParam } = useLocalSearchParams<{ tab?: Tab }>();
   const [encuestas, setEncuestas] = useState<Encuesta[]>([]);
   const [votedEncuestaIds, setVotedEncuestaIds] = useState<Set<string>>(new Set());
@@ -57,6 +60,30 @@ export default function GroupsScreen() {
   useEffect(() => {
     router.setParams({ tab });
   }, [tab]);
+
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: false });
+  }, [navigation]);
+
+  const goToTab = useCallback((direction: 'prev' | 'next') => {
+    setTab((prev) => {
+      const idx = TAB_ORDER.indexOf(prev);
+      if (direction === 'next' && idx < TAB_ORDER.length - 1) return TAB_ORDER[idx + 1];
+      if (direction === 'prev' && idx > 0) return TAB_ORDER[idx - 1];
+      return prev;
+    });
+  }, []);
+
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .minDistance(30)
+    .onEnd((event) => {
+      if (event.translationX > 0) {
+        goToTab('prev');
+      } else {
+        goToTab('next');
+      }
+    });
 
   const headerTitle = useMemo(() => {
     const map: Record<Tab, string> = {
@@ -298,6 +325,7 @@ export default function GroupsScreen() {
   const noLeidasCount = finalizadas.filter((e) => !leidas.has(e.id)).length;
 
   return (
+    <GestureDetector gesture={swipeGesture}>
     <View style={styles.container}>
       <View style={[styles.customHeader, { paddingTop: insets.top + 4 }]}>
         <View style={styles.headerLeft}>
@@ -327,11 +355,6 @@ export default function GroupsScreen() {
 
       {tab === 'grupos' ? (
         <>
-          <Pressable style={styles.newSurveyBtn} onPress={() => router.push('/crear-grupo')}>
-            <MaterialIcons name="add" size={20} color="#FFF" />
-            <Text style={styles.newSurveyBtnText}>{t('newGroup')}</Text>
-          </Pressable>
-
           {loadingGrupos && grupos.length === 0 ? (
             <Text style={styles.helper}>{t('loadingGroups')}</Text>
           ) : (
@@ -375,11 +398,6 @@ export default function GroupsScreen() {
         </>
       ) : (
         <>
-          <Pressable style={styles.newSurveyBtn} onPress={() => router.push('/create-encuesta')}>
-            <MaterialIcons name="add" size={20} color="#FFF" />
-            <Text style={styles.newSurveyBtnText}>{t('newPoll')}</Text>
-          </Pressable>
-
           <TextInput
             style={styles.search}
             placeholder={t('searchPolls')}
@@ -451,7 +469,16 @@ export default function GroupsScreen() {
 
       {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom + 4 }]}>
+      <Pressable
+        style={styles.newSurveyBtn}
+        onPress={() => router.push(tab === 'grupos' ? '/crear-grupo' : '/create-encuesta')}>
+        <MaterialIcons name="add" size={20} color="#FFF" />
+        <Text style={styles.newSurveyBtnText}>
+          {tab === 'grupos' ? t('newGroup') : t('newPoll')}
+        </Text>
+      </Pressable>
+
+      <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
         <Pressable style={styles.tab} onPress={() => setTab('activas')}>
           <View style={styles.tabIconWrap}>
             <MaterialIcons name="radio-button-unchecked" size={24} color={tab === 'activas' ? '#1F6FEB' : '#888'} />
@@ -475,7 +502,8 @@ export default function GroupsScreen() {
           <Text style={[styles.tabLabel, tab === 'finalizadas' && styles.tabLabelActive]}>{t('tabFinished')}</Text>
         </Pressable>
       </View>
-    </View>
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -501,7 +529,7 @@ const styles = StyleSheet.create({
   },
   headerAppName: { fontSize: 9, color: '#999', letterSpacing: 0.3 },
   headerSpacer: { height: 9 },
-  headerTabTitle: { fontSize: 32, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
+  headerTabTitle: { fontSize: 28, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
   newSurveyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -509,14 +537,14 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#1F6FEB',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 10,
+    marginVertical: 8,
   },
   newSurveyBtnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   search: {
     marginHorizontal: 16,
+    marginTop: 12,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#DDD',
@@ -547,15 +575,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
-    paddingTop: 6,
+    paddingTop: 8,
+    paddingBottom: 6,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 3,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
-  tabLabel: { fontSize: 11, fontWeight: '500', color: '#888', marginTop: 2 },
+  tabLabel: { fontSize: 12, fontWeight: '500', color: '#888', marginTop: 2 },
   tabLabelActive: { color: '#1F6FEB', fontWeight: '600' },
   tabIconWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   tabBadgeOver: { position: 'absolute', top: -6, right: -10, backgroundColor: '#1F6FEB', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
