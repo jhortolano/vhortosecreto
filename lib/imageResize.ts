@@ -2,7 +2,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { File } from 'expo-file-system';
 
 const MAX_DIM = 1080;
-const MAX_SIZE = 200 * 1024;
+const MAX_SIZE = 100 * 1024;
 const INITIAL_COMPRESSION = 0.8;
 
 export async function resizeImage(uri: string): Promise<string> {

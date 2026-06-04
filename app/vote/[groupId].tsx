@@ -52,6 +52,7 @@ export default function VoteScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
   const [encuestaImageUri, setEncuestaImageUri] = useState<string | null>(null);
+  const [encuestaImageSize, setEncuestaImageSize] = useState<{ width: number; height: number } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [voteConfirmation, setVoteConfirmation] = useState<string[] | null>(null);
@@ -340,7 +341,16 @@ export default function VoteScreen() {
         </Text>
 
         {encuestaImageUri && (
-          <Image source={{ uri: encuestaImageUri }} style={styles.encuestaImage} contentFit="cover" />
+          <Image
+            source={{ uri: encuestaImageUri }}
+            style={[styles.encuestaImage, encuestaImageSize && { aspectRatio: encuestaImageSize.width / encuestaImageSize.height }]}
+            contentFit="contain"
+            onLoad={(e) => {
+              if (!encuestaImageSize) {
+                setEncuestaImageSize({ width: e.source.width, height: e.source.height });
+              }
+            }}
+          />
         )}
 
         <Pressable style={styles.votantesToggle} onPress={toggleVotantes}>
@@ -1040,7 +1050,6 @@ const styles = StyleSheet.create({
   },
   encuestaImage: {
     width: '100%',
-    height: 200,
     borderRadius: 10,
     marginBottom: 12,
   },
