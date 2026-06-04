@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -308,6 +309,8 @@ export default function ProfileScreen() {
         <Pressable style={styles.deleteAccountButton} onPress={deleteAccount} disabled={isSaving}>
           <Text style={styles.deleteAccountText}>{t('deleteAccount')}</Text>
         </Pressable>
+
+        <Text style={styles.versionText}>Vhorto Secreto V.{Constants.expoConfig?.version ?? '1.0.0'}</Text>
       </View>
     </ScrollView>
   );
@@ -416,5 +419,12 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  versionText: {
+    textAlign: 'center',
+    color: '#BBB',
+    fontSize: 12,
+    marginTop: 32,
+    marginBottom: 8,
   },
 });

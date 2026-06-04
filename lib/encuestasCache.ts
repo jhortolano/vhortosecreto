@@ -8,6 +8,7 @@ export interface EncuestaCache {
   leidas: string[];
   ownerAvatars: Record<string, string | null>;
   grupos?: { id: string; nombre: string; imagen_url: string | null }[];
+  encuestaImages?: Record<string, { r2_key: string; r2_url: string }>;
 }
 
 export async function loadCache(): Promise<EncuestaCache | null> {

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Swipeable, { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { fetchProfile, isProfileComplete } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { useCreateEncuesta, type EncuestaContactPick } from '@/context/createEncuestaContext';
 import { savePushToken } from '@/lib/notifications';
 import { loadCache, saveCache } from '@/lib/encuestasCache';
+import { ensureImageDownloaded, deleteEncuestaImageCache } from '@/lib/encuestaImage';
 import { useT } from '@/lib/i18n';
+import { GlassView } from '@/lib/GlassView';
 
 type Encuesta = {
   id: string;
@@ -55,6 +57,7 @@ export default function GroupsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [tab, setTab] = useState<Tab>((tabParam as Tab) || 'activas');
+  const [bottomMenuHeight, setBottomMenuHeight] = useState(0);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -65,25 +68,27 @@ export default function GroupsScreen() {
     navigation.setOptions({ gestureEnabled: false });
   }, [navigation]);
 
-  const goToTab = useCallback((direction: 'prev' | 'next') => {
-    setTab((prev) => {
-      const idx = TAB_ORDER.indexOf(prev);
-      if (direction === 'next' && idx < TAB_ORDER.length - 1) return TAB_ORDER[idx + 1];
-      if (direction === 'prev' && idx > 0) return TAB_ORDER[idx - 1];
-      return prev;
-    });
-  }, []);
+  const TAB_INDEX: Record<Tab, number> = { activas: 0, grupos: 1, votadas: 2, finalizadas: 3 };
+  const indicAnim = useRef(new Animated.Value(TAB_INDEX[tab])).current;
+  const [tabBarWidth, setTabBarWidth] = useState(0);
 
-  const swipeGesture = Gesture.Pan()
-    .activeOffsetX([-20, 20])
-    .minDistance(30)
-    .onEnd((event) => {
-      if (event.translationX > 0) {
-        goToTab('prev');
-      } else {
-        goToTab('next');
-      }
-    });
+  const onTabBarLayout = useCallback((e: any) => {
+    const w = e.nativeEvent.layout.width;
+    setTabBarWidth(w);
+    indicAnim.setValue((TAB_INDEX[tab] / TAB_ORDER.length) * w + 4);
+  }, [tab, indicAnim]);
+
+  useEffect(() => {
+    if (tabBarWidth > 0) {
+      const target = (TAB_INDEX[tab] / TAB_ORDER.length) * tabBarWidth + 4;
+      Animated.spring(indicAnim, {
+        toValue: target,
+        useNativeDriver: true,
+        damping: 16,
+        stiffness: 180,
+      }).start();
+    }
+  }, [tab, tabBarWidth, indicAnim]);
 
   const headerTitle = useMemo(() => {
     const map: Record<Tab, string> = {
@@ -163,6 +168,21 @@ export default function GroupsScreen() {
       for (const p of profiles) avatarMap[p.phone] = p.avatar_url ?? null;
     }
 
+    let encuestaImagesMap: Record<string, { r2_key: string; r2_url: string }> = {};
+    const encuestaIds = encuestasFiltradas.map((e) => e.id);
+    if (encuestaIds.length > 0) {
+      const { data: imagesData } = await supabase
+        .from('encuesta_imagenes')
+        .select('id_encuesta, r2_key, r2_url')
+        .in('id_encuesta', encuestaIds);
+      if (imagesData) {
+        for (const img of imagesData) {
+          encuestaImagesMap[img.id_encuesta] = { r2_key: img.r2_key, r2_url: img.r2_url };
+          ensureImageDownloaded(img.r2_key, img.r2_url).catch(() => {});
+        }
+      }
+    }
+
     if (mountedRef.current) {
       setVotedEncuestaIds(new Set(haVotadoRes.data?.map((v) => v.id_encuesta) ?? []));
       setLeidas(new Set(leidasRes.data?.map((l) => l.id_encuesta) ?? []));
@@ -175,6 +195,7 @@ export default function GroupsScreen() {
         votedIds: haVotadoRes.data?.map((v) => v.id_encuesta) ?? [],
         leidas: leidasRes.data?.map((l) => l.id_encuesta) ?? [],
         ownerAvatars: avatarMap,
+        encuestaImages: encuestaImagesMap,
       });
     }
   }, []);
@@ -242,8 +263,8 @@ export default function GroupsScreen() {
     ]);
   };
 
-  const deleteEncuesta = (id: string, titulo: string) => {
-    Alert.alert(t('deletePoll'), `${t('confirmDeleteText')} "${titulo}"`, [
+  const deleteEncuesta = (id: string, titulo: string, isHide: boolean) => {
+    Alert.alert(t('deletePoll'), `${isHide ? t('confirmHideText') : t('confirmDeleteText')} "${titulo}"`, [
       { text: t('cancel'), style: 'cancel' },
       {
         text: t('deleteAlert'),
@@ -255,7 +276,23 @@ export default function GroupsScreen() {
             cached.encuestas = cached.encuestas.filter((e: any) => e.id !== id);
             await saveCache(cached);
           }
-          await supabase.from('encuestas').delete().eq('id', id);
+          if (isHide) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await supabase.from('encuestas_eliminadas').insert({ id_encuesta: id, user_id: user.id });
+            }
+          } else {
+            const { data: imgData } = await supabase
+              .from('encuesta_imagenes')
+              .select('r2_key')
+              .eq('id_encuesta', id)
+              .maybeSingle();
+            if (imgData?.r2_key) {
+              deleteEncuestaImageCache(imgData.r2_key).catch(() => {});
+              supabase.functions.invoke('r2-delete', { body: { key: imgData.r2_key } }).catch(() => {});
+            }
+            await supabase.from('encuestas').delete().eq('id', id);
+          }
         },
       },
     ]);
@@ -293,8 +330,8 @@ export default function GroupsScreen() {
         }
       };
       void loadProfile();
-      if (tab === 'grupos') void loadGrupos();
       void loadEncuestas();
+      if (tab === 'grupos') void loadGrupos();
     }, [tab, loadGrupos, loadEncuestas])
   );
 
@@ -325,7 +362,6 @@ export default function GroupsScreen() {
   const noLeidasCount = finalizadas.filter((e) => !leidas.has(e.id)).length;
 
   return (
-    <GestureDetector gesture={swipeGesture}>
     <View style={styles.container}>
       <View style={[styles.customHeader, { paddingTop: insets.top + 4 }]}>
         <View style={styles.headerLeft}>
@@ -361,7 +397,7 @@ export default function GroupsScreen() {
             <FlatList
               data={grupos}
               keyExtractor={(g) => g.id}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[styles.listContent, { paddingBottom: (bottomMenuHeight || 150) }]}
               renderItem={({ item }) => (
                 <Swipeable
                   overshootRight={false}
@@ -414,18 +450,19 @@ export default function GroupsScreen() {
             <FlatList
               data={filtered}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[styles.listContent, { paddingBottom: (bottomMenuHeight || 150) }]}
               renderItem={({ item }) => {
                 const isUnread = item.finalizada && !leidas.has(item.id);
                 const canDelete = item.owner === userPhone;
+                const canHide = tab === 'votadas' && !canDelete;
                 return (
                   <Swipeable
                     overshootRight={false}
                     renderRightActions={() =>
-                      canDelete ? (
+                      (canDelete || canHide) ? (
                         <Pressable
                           style={styles.deleteAction}
-                          onPress={() => deleteEncuesta(item.id, item.titulo)}>
+                          onPress={() => deleteEncuesta(item.id, item.titulo, !canDelete)}>
                           <Text style={styles.deleteActionText}>🗑</Text>
                         </Pressable>
                       ) : null
@@ -469,41 +506,58 @@ export default function GroupsScreen() {
 
       {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
-      <Pressable
-        style={styles.newSurveyBtn}
-        onPress={() => router.push(tab === 'grupos' ? '/crear-grupo' : '/create-encuesta')}>
-        <MaterialIcons name="add" size={20} color="#FFF" />
-        <Text style={styles.newSurveyBtnText}>
-          {tab === 'grupos' ? t('newGroup') : t('newPoll')}
-        </Text>
-      </Pressable>
-
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
-        <Pressable style={styles.tab} onPress={() => setTab('activas')}>
-          <View style={styles.tabIconWrap}>
-            <MaterialIcons name="radio-button-unchecked" size={24} color={tab === 'activas' ? '#1F6FEB' : '#888'} />
-            {activas.length > 0 && <View style={styles.tabBadgeOver}><Text style={styles.tabBadgeText}>{activas.length}</Text></View>}
-          </View>
-          <Text style={[styles.tabLabel, tab === 'activas' && styles.tabLabelActive]}>{t('tabActive')}</Text>
-        </Pressable>
-        <Pressable style={styles.tab} onPress={() => setTab('grupos')}>
-          <MaterialIcons name="people" size={24} color={tab === 'grupos' ? '#1F6FEB' : '#888'} />
-          <Text style={[styles.tabLabel, tab === 'grupos' && styles.tabLabelActive]}>{t('tabGroups')}</Text>
-        </Pressable>
-        <Pressable style={styles.tab} onPress={() => setTab('votadas')}>
-          <MaterialIcons name="how-to-vote" size={24} color={tab === 'votadas' ? '#1F6FEB' : '#888'} />
-          <Text style={[styles.tabLabel, tab === 'votadas' && styles.tabLabelActive]}>{t('tabVoted')}</Text>
-        </Pressable>
-        <Pressable style={styles.tab} onPress={() => setTab('finalizadas')}>
-          <View style={styles.tabIconWrap}>
-            <MaterialIcons name="check-circle" size={24} color={tab === 'finalizadas' ? '#1F6FEB' : '#888'} />
-            {noLeidasCount > 0 && <View style={[styles.tabBadgeOver, styles.tabBadgeRed]}><Text style={styles.tabBadgeText}>{noLeidasCount}</Text></View>}
-          </View>
-          <Text style={[styles.tabLabel, tab === 'finalizadas' && styles.tabLabelActive]}>{t('tabFinished')}</Text>
-        </Pressable>
-      </View>
-      </View>
-    </GestureDetector>
+      <GlassView
+        onLayout={(e) => setBottomMenuHeight(e.nativeEvent.layout.height)}
+        style={[styles.bottomMenu, { paddingBottom: insets.bottom + 8 }]}
+      >
+        <View style={styles.newSurveySection}>
+          <Pressable
+            style={styles.newSurveyBtn}
+            onPress={() => router.push(tab === 'grupos' ? '/crear-grupo' : '/create-encuesta')}>
+            <MaterialIcons name="add" size={20} color="#FFF" />
+            <Text style={styles.newSurveyBtnText}>
+              {tab === 'grupos' ? t('newGroup') : t('newPoll')}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.tabBarDivider} />
+        <View style={styles.tabBar} onLayout={onTabBarLayout}>
+          {tabBarWidth > 0 && (
+            <Animated.View
+              style={[
+                styles.tabPill,
+                {
+                  width: tabBarWidth / TAB_ORDER.length - 8,
+                  transform: [{ translateX: indicAnim }],
+                },
+              ]}
+            />
+          )}
+          <Pressable style={styles.tab} onPress={() => setTab('activas')}>
+            <View style={styles.tabIconWrap}>
+              <MaterialIcons name="radio-button-unchecked" size={24} color={tab === 'activas' ? '#007AFF' : '#8E8E93'} />
+              {activas.length > 0 && <View style={styles.tabBadgeOver}><Text style={styles.tabBadgeText}>{activas.length}</Text></View>}
+            </View>
+            <Text style={[styles.tabLabel, tab === 'activas' && styles.tabLabelActive]}>{t('tabActive')}</Text>
+          </Pressable>
+          <Pressable style={styles.tab} onPress={() => setTab('grupos')}>
+            <MaterialIcons name="people" size={24} color={tab === 'grupos' ? '#007AFF' : '#8E8E93'} />
+            <Text style={[styles.tabLabel, tab === 'grupos' && styles.tabLabelActive]}>{t('tabGroups')}</Text>
+          </Pressable>
+          <Pressable style={styles.tab} onPress={() => setTab('votadas')}>
+            <MaterialIcons name="how-to-vote" size={24} color={tab === 'votadas' ? '#007AFF' : '#8E8E93'} />
+            <Text style={[styles.tabLabel, tab === 'votadas' && styles.tabLabelActive]}>{t('tabVoted')}</Text>
+          </Pressable>
+          <Pressable style={styles.tab} onPress={() => setTab('finalizadas')}>
+            <View style={styles.tabIconWrap}>
+              <MaterialIcons name="check-circle" size={24} color={tab === 'finalizadas' ? '#007AFF' : '#8E8E93'} />
+              {noLeidasCount > 0 && <View style={[styles.tabBadgeOver, styles.tabBadgeRed]}><Text style={styles.tabBadgeText}>{noLeidasCount}</Text></View>}
+            </View>
+            <Text style={[styles.tabLabel, tab === 'finalizadas' && styles.tabLabelActive]}>{t('tabFinished')}</Text>
+          </Pressable>
+        </View>
+      </GlassView>
+    </View>
   );
 }
 
@@ -539,7 +593,47 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginBottom: 8,
+  },
+  newSurveySection: {
+    marginTop: 8,
+  },
+  bottomMenu: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  tabBarDivider: {
+    height: 1,
+    backgroundColor: '#C6C6C8',
+    marginHorizontal: 16,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  tabPill: {
+    position: 'absolute',
+    top: 6,
+    bottom: 6,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   newSurveyBtnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   search: {
@@ -571,28 +665,12 @@ const styles = StyleSheet.create({
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1F6FEB', marginLeft: 8 },
   cardMeta: { color: '#666', fontSize: 13, marginTop: 2 },
   empty: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
-  tabBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    paddingTop: 8,
-    paddingBottom: 6,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  tabLabel: { fontSize: 12, fontWeight: '500', color: '#888', marginTop: 2 },
-  tabLabelActive: { color: '#1F6FEB', fontWeight: '600' },
+  tabLabel: { fontSize: 12, fontWeight: '500', color: '#8E8E93', marginTop: 2 },
+  tabLabelActive: { color: '#007AFF', fontWeight: '600' },
   tabIconWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   tabBadgeOver: { position: 'absolute', top: -6, right: -10, backgroundColor: '#1F6FEB', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tabBadgeRed: { backgroundColor: '#C62828' },
   tabBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
-  tabUnderline: { position: 'absolute', top: 0, left: 8, right: 8, height: 3, backgroundColor: '#1F6FEB', borderBottomLeftRadius: 3, borderBottomRightRadius: 3 },
   cardHeaderMain: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   grupoEncuestaBtn: { alignItems: 'center', justifyContent: 'center', paddingLeft: 12, paddingVertical: 4, minWidth: 56 },
   grupoEncuestaLabel: { fontSize: 10, color: '#1F6FEB', marginTop: 2, fontWeight: '500' },

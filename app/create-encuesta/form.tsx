@@ -4,7 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { needsAd, resetCounter, incrementCounter, markFirstAdDone } from '@/lib/adManager';
 import { showRewardedAd } from '@/lib/rewardedAd';
 import { loadCache, saveCache } from '@/lib/encuestasCache';
+import { resizeImage, imageUriToBase64 } from '@/lib/imageResize';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useT } from '@/lib/i18n';
@@ -42,6 +45,8 @@ export default function CreateEncuestaFormScreen() {
   const [titulo, setTitulo] = useState('');
   const [opciones, setOpciones] = useState<string[]>(['', '']);
   const [multiopcion, setMultiopcion] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adLoading, setAdLoading] = useState(false);
   const [error, setError] = useState('');
@@ -62,6 +67,30 @@ export default function CreateEncuestaFormScreen() {
       next[index] = value;
       return next;
     });
+  };
+
+  const pickImage = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(t('galleryPermission'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      try {
+        const resized = await resizeImage(result.assets[0].uri);
+        setSelectedImageUri(resized);
+      } catch {
+        setSelectedImageUri(result.assets[0].uri);
+      }
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImageUri(null);
   };
 
   const cancel = () => {
@@ -111,6 +140,47 @@ export default function CreateEncuestaFormScreen() {
 
     const trimmedOps = opciones.map((x) => x.trim());
 
+    let imagenKey: string | null = null;
+    let imagenUrl: string | null = null;
+
+    if (selectedImageUri) {
+      setUploadingImage(true);
+      try {
+        const resized = await resizeImage(selectedImageUri);
+        const base64 = await imageUriToBase64(resized);
+        let res = await supabase.functions.invoke('r2-upload', {
+          body: { image_base64: base64 },
+        });
+        let uploadResult = res.data;
+        let uploadError = res.error;
+        if (uploadError) {
+          console.error('r2-upload invoke error:', uploadError);
+          setSaving(false);
+          setUploadingImage(false);
+          setError(`Error al subir la imagen: ${uploadError.message}`);
+          return;
+        }
+        if (typeof uploadResult === 'string') {
+          try { uploadResult = JSON.parse(uploadResult); } catch { /* ignore */ }
+        }
+        console.log('r2-upload response:', JSON.stringify(uploadResult));
+        if (!uploadResult?.key || !uploadResult?.url) {
+          setSaving(false);
+          setUploadingImage(false);
+          setError('Respuesta inválida del servidor de imágenes.');
+          return;
+        }
+        imagenKey = uploadResult.key;
+        imagenUrl = uploadResult.url;
+      } catch {
+        setSaving(false);
+        setUploadingImage(false);
+        setError('Error al procesar la imagen.');
+        return;
+      }
+      setUploadingImage(false);
+    }
+
     if (await needsAd()) {
       await new Promise<void>((resolve) => {
         Alert.alert(
@@ -146,6 +216,8 @@ export default function CreateEncuestaFormScreen() {
       p_multiopcion: multiopcion,
       p_opciones: trimmedOps,
       p_phones_participantes: phones,
+      p_imagen_key: imagenKey,
+      p_imagen_url: imagenUrl,
     });
 
     if (rpcError) {
@@ -223,6 +295,23 @@ export default function CreateEncuestaFormScreen() {
           onChangeText={setTitulo}
           placeholder="Ej.: Donde cenamos el viernes"
         />
+
+        <Pressable style={styles.imagePickerBtn} onPress={selectedImageUri ? removeImage : pickImage}>
+          {selectedImageUri ? (
+            <View style={styles.imagePreviewWrap}>
+              <Image source={{ uri: selectedImageUri }} style={styles.imagePreview} contentFit="cover" />
+              <Text style={styles.imageRemoveText}>{t('removeImage')}</Text>
+            </View>
+          ) : (
+            <Text style={styles.imagePickerText}>{t('addImage')}</Text>
+          )}
+        </Pressable>
+        {uploadingImage && (
+          <View style={styles.uploadingRow}>
+            <ActivityIndicator size="small" color="#1F6FEB" />
+            <Text style={styles.uploadingText}>{t('sending')}</Text>
+          </View>
+        )}
 
         {opciones.map((op, i) => (
           <View key={`op-${i}`} style={styles.optionBlock}>
@@ -348,4 +437,20 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   overlayText: { fontSize: 16, fontWeight: '600', color: '#333' },
+  imagePickerBtn: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    alignItems: 'center',
+    borderStyle: 'dashed',
+    alignSelf: 'stretch',
+  },
+  imagePickerText: { color: '#1F6FEB', fontWeight: '600', fontSize: 14 },
+  imagePreviewWrap: { alignItems: 'center', gap: 6, width: '100%' },
+  imagePreview: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#F0F0F0' },
+  imageRemoveText: { color: '#C62828', fontWeight: '600', fontSize: 13 },
+  uploadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  uploadingText: { color: '#888', fontSize: 13 },
 });

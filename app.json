@@ -2,7 +2,7 @@
   "expo": {
     "name": "Voto Secreto",
     "slug": "VhortoSecreto",
-    "version": "1.0.8",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vhortosecreto",
@@ -11,13 +11,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.termibululu.vhortosecreto",
+      "buildNumber": "2",
       "infoPlist": {
         "CFBundleDisplayName": "Voto Secreto",
         "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
-      "versionCode": 10,
+      "versionCode": 11,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

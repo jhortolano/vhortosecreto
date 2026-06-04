@@ -63,7 +63,7 @@ key (PK), value
 - Package/bundle ID: `com.termibululu.vhortosecreto`
 - Supabase project: `jheujtrgjwoflanbmzqu.supabase.co`
 - EAS project ID: `39b9d279-72d2-4793-9fdc-8de00d760785`
-- Version: 1.0.3 (Android versionCode: 5)
+- Version: 1.0.10 (Android versionCode: 11)
 
 ## Auth flow
 - Login: email → OTP → verify → check profile completeness → redirect

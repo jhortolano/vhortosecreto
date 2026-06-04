@@ -109,7 +109,9 @@ create or replace function public.create_encuesta_bundle(
   p_titulo text,
   p_multiopcion boolean,
   p_opciones text[],
-  p_phones_participantes text[]
+  p_phones_participantes text[],
+  p_imagen_key text default null,
+  p_imagen_url text default null
 )
 returns uuid
 language plpgsql
@@ -216,11 +218,16 @@ begin
     values (v_uid, p_phone, v_nick);
   end loop;
 
+  if p_imagen_key is not null and p_imagen_url is not null then
+    insert into public.encuesta_imagenes (id_encuesta, r2_key, r2_url)
+    values (v_uid, p_imagen_key, p_imagen_url);
+  end if;
+
   return v_uid;
 end;
 $$;
 
-grant execute on function public.create_encuesta_bundle(text, boolean, text[], text[]) to authenticated;
+grant execute on function public.create_encuesta_bundle(text, boolean, text[], text[], text, text) to authenticated;
 
 -- ============================================================
 -- Votos anónimos (sin user_id) + control de quién ha votado
@@ -665,6 +672,40 @@ using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
 -- ============================================================
+-- Imágenes de encuestas (Cloudflare R2)
+-- ============================================================
+
+create table if not exists public.encuesta_imagenes (
+  id_encuesta uuid not null references public.encuestas(id) on delete cascade,
+  r2_key text not null,
+  r2_url text not null,
+  created_at timestamptz not null default now(),
+  primary key (id_encuesta)
+);
+
+alter table public.encuesta_imagenes enable row level security;
+
+drop policy if exists "encuesta_imagenes_select_participantes" on public.encuesta_imagenes;
+create policy "encuesta_imagenes_select_participantes"
+on public.encuesta_imagenes
+for select
+to authenticated
+using (
+  public.is_encuesta_visible(id_encuesta, (select p.phone from public.profiles p where p.id = auth.uid()))
+);
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'encuesta_imagenes'
+  ) then
+    alter publication supabase_realtime add table public.encuesta_imagenes;
+  end if;
+end;
+$$;
+
+-- ============================================================
 -- Config: versión mínima forzar actualización
 -- ============================================================
 
@@ -675,3 +716,62 @@ create table if not exists public.app_config (
 
 insert into public.app_config (key, value) values ('min_version', '1.0.0')
 on conflict (key) do nothing;
+
+-- ============================================================
+-- Finalizar encuesta parcial (creador elimina no votantes)
+-- ============================================================
+
+create or replace function public.finalizar_encuesta_parcial(p_id_encuesta uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_owner text;
+  v_phone text;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  select p.phone into v_phone
+  from public.profiles p
+  where p.id = auth.uid();
+
+  if v_phone is null then
+    raise exception 'profile_incomplete';
+  end if;
+
+  select e.owner into v_owner
+  from public.encuestas e
+  where e.id = p_id_encuesta;
+
+  if v_owner is null then
+    raise exception 'encuesta_not_found';
+  end if;
+
+  if v_owner <> v_phone then
+    raise exception 'solo_el_creador';
+  end if;
+
+  delete from public.encuestas_usuarios eu
+  where eu.id_encuesta = p_id_encuesta
+    and eu.phone_usuario not in (
+      select pr.phone
+      from public.encuestas_ha_votado ehv
+      join public.profiles pr on pr.id = ehv.user_id
+      where ehv.id_encuesta = p_id_encuesta
+    );
+
+  update public.encuestas
+  set
+    finalizada = true,
+    finalizada_at = now(),
+    votantes = personas_votadas,
+    personas_a_votar = personas_votadas
+  where id = p_id_encuesta and not finalizada;
+end;
+$$;
+
+grant execute on function public.finalizar_encuesta_parcial(uuid) to authenticated;

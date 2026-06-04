@@ -7,6 +7,7 @@ import * as Contacts from 'expo-contacts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { normalizeContactPhone } from '@/lib/phoneNormalize';
 import { loadCache, saveCache } from '@/lib/encuestasCache';
+import { ensureImageDownloaded, deleteEncuestaImageCache } from '@/lib/encuestaImage';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
 
@@ -31,6 +32,7 @@ type Votante = {
   phone_usuario: string;
   nick_usuario: string | null;
   avatar_url: string | null;
+  haVotado: boolean;
 };
 
 export default function VoteScreen() {
@@ -49,8 +51,10 @@ export default function VoteScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
+  const [encuestaImageUri, setEncuestaImageUri] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [voteConfirmation, setVoteConfirmation] = useState<string[] | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -70,6 +74,16 @@ export default function VoteScreen() {
           return;
         }
         setEncuesta(e);
+
+        const { data: imgData } = await supabase
+          .from('encuesta_imagenes')
+          .select('r2_key, r2_url')
+          .eq('id_encuesta', groupId)
+          .maybeSingle();
+        if (imgData) {
+          const localUri = await ensureImageDownloaded(imgData.r2_key, imgData.r2_url);
+          setEncuestaImageUri(localUri);
+        }
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -174,21 +188,7 @@ export default function VoteScreen() {
     }
 
     setHaVotado(true);
-    setSuccessMessage(t('voteRegistered'));
-
-    const { data: ops } = await supabase
-      .from('encuestas_opciones')
-      .select('id, total_votos')
-      .eq('id_encuesta', groupId);
-
-    if (ops) {
-      setOpciones((prev) =>
-        prev.map((o) => ({
-          ...o,
-          total_votos: ops.find((r) => r.id === o.id)?.total_votos ?? o.total_votos,
-        }))
-      );
-    }
+    setVoteConfirmation(opciones.filter((o) => selectedIds.has(o.id)).map((o) => o.opcion_texto));
 
     const { data: e } = await supabase
       .from('encuestas')
@@ -196,30 +196,28 @@ export default function VoteScreen() {
       .eq('id', groupId)
       .single();
 
-    if (e) {
+    if (e?.finalizada) {
       setEncuesta(e);
-      if (e.finalizada) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('encuestas_lecturas').upsert(
-            { id_encuesta: e.id, user_id: user.id },
-            { onConflict: 'id_encuesta,user_id' }
-          );
-        }
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('phone')
-          .eq('id', user?.id)
-          .single();
-        supabase.functions.invoke('send-push', {
-          body: {
-            type: 'encuesta_finalizada',
-            encuesta_id: e.id,
-            titulo: e.titulo,
-            exclude_phone: profile?.phone || undefined,
-          },
-        }).catch(() => {});
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('encuestas_lecturas').upsert(
+          { id_encuesta: e.id, user_id: user.id },
+          { onConflict: 'id_encuesta,user_id' }
+        );
       }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', user?.id)
+        .single();
+      supabase.functions.invoke('send-push', {
+        body: {
+          type: 'encuesta_finalizada',
+          encuesta_id: e.id,
+          titulo: e.titulo,
+          exclude_phone: profile?.phone || undefined,
+        },
+      }).catch(() => {});
     }
   };
 
@@ -228,30 +226,46 @@ export default function VoteScreen() {
       setShowVotantes(false);
       return;
     }
-    if (votantes.length === 0) {
-      if (!groupId) return;
-      setVotantesLoading(true);
-      const { data, error } = await supabase
-        .from('encuestas_usuarios')
-        .select('phone_usuario, nick_usuario')
-        .eq('id_encuesta', groupId)
-        .order('nick_usuario', { ascending: true });
-      let list: Votante[] = (data ?? []).map((v) => ({ ...v, avatar_url: null }));
-      if (!error && encuesta && !list.some((v) => v.phone_usuario === encuesta.owner)) {
-        list = [{ phone_usuario: encuesta.owner, nick_usuario: encuesta.owner_nick, avatar_url: null }, ...list];
-      }
-      const phones = list.map((v) => v.phone_usuario);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('phone, avatar_url')
-        .in('phone', phones);
-      if (profiles) {
-        const avatarMap = Object.fromEntries(profiles.map((p) => [p.phone, p.avatar_url]));
-        list = list.map((v) => ({ ...v, avatar_url: avatarMap[v.phone_usuario] ?? null }));
-      }
-      setVotantes(list);
-      setVotantesLoading(false);
+    if (!groupId) return;
+    setVotantesLoading(true);
+    const { data, error } = await supabase
+      .from('encuestas_usuarios')
+      .select('phone_usuario, nick_usuario')
+      .eq('id_encuesta', groupId)
+      .order('nick_usuario', { ascending: true });
+    let list: Votante[] = (data ?? []).map((v) => ({ ...v, avatar_url: null, haVotado: false }));
+    if (!error && encuesta && !list.some((v) => v.phone_usuario === encuesta.owner)) {
+      list = [{ phone_usuario: encuesta.owner, nick_usuario: encuesta.owner_nick, avatar_url: null, haVotado: false }, ...list];
     }
+
+    const isVotadasCase = haVotado && !encuesta?.finalizada;
+    if (isVotadasCase) {
+      const { data: haVotadoData } = await supabase
+        .from('encuestas_ha_votado')
+        .select('user_id')
+        .eq('id_encuesta', groupId);
+      const userIds = haVotadoData?.map(v => v.user_id) ?? [];
+      if (userIds.length > 0) {
+        const { data: voterProfiles } = await supabase
+          .from('profiles')
+          .select('phone')
+          .in('id', userIds);
+        const votedPhones = new Set(voterProfiles?.map(p => p.phone) ?? []);
+        list = list.map(v => ({ ...v, haVotado: votedPhones.has(v.phone_usuario) }));
+      }
+    }
+
+    const phones = list.map((v) => v.phone_usuario);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('phone, avatar_url')
+      .in('phone', phones);
+    if (profiles) {
+      const avatarMap = Object.fromEntries(profiles.map((p) => [p.phone, p.avatar_url]));
+      list = list.map((v) => ({ ...v, avatar_url: avatarMap[v.phone_usuario] ?? null }));
+    }
+    setVotantes(list);
+    setVotantesLoading(false);
     if (Object.keys(contactNames).length === 0) {
       await loadContactNames();
     }
@@ -267,6 +281,7 @@ export default function VoteScreen() {
 
   const hasVoted = haVotado;
   const showVoteUI = encuesta && !encuesta.finalizada && !hasVoted;
+  const canShowResults = encuesta?.finalizada || !hasVoted || ((encuesta?.personas_votadas ?? 0) >= 4 && ((encuesta?.personas_votadas ?? 0) / (encuesta?.votantes ?? 1)) >= 0.5);
 
   if (isLoading) {
     return (
@@ -288,6 +303,26 @@ export default function VoteScreen() {
   const totalVotos = opciones.reduce((sum, o) => sum + o.total_votos, 0);
   const maxVotos = encuesta.finalizada ? Math.max(...opciones.map(o => o.total_votos), 0) : 0;
 
+  if (voteConfirmation) {
+    return (
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={[styles.container, styles.centered]}>
+          <View style={styles.confirmationIcon}>
+            <MaterialIcons name="check-circle" size={64} color="#0F8A3E" />
+          </View>
+          <Text style={styles.confirmationTitle}>{t('voteRegistered')}</Text>
+          <Text style={styles.confirmationVoted}>
+            {t('youVoted')} {voteConfirmation.join(', ')}
+          </Text>
+          <Text style={styles.confirmationSecret}>{t('voteIsSecret')}</Text>
+          <Pressable style={styles.confirmationCloseBtn} onPress={() => router.replace('/groups')}>
+            <Text style={styles.confirmationCloseBtnText}>{t('close')}</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <>
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -304,6 +339,10 @@ export default function VoteScreen() {
           {encuesta.multiopcion ? ` · ${t('multioption')}` : ''}
         </Text>
 
+        {encuestaImageUri && (
+          <Image source={{ uri: encuestaImageUri }} style={styles.encuestaImage} contentFit="cover" />
+        )}
+
         <Pressable style={styles.votantesToggle} onPress={toggleVotantes}>
           <Text style={styles.votantesToggleText}>
             {showVotantes ? t('hideParticipants') : t('viewParticipants')}
@@ -317,9 +356,29 @@ export default function VoteScreen() {
               <Text style={styles.votantesLoading}>{t('loadingParticipants')}</Text>
             ) : votantes.length === 0 ? (
               <Text style={styles.votantesEmpty}>{t('noParticipants')}</Text>
-            ) : (
-              votantes.map((v) => {
-                return (
+            ) : hasVoted && !encuesta.finalizada ? (
+              <>
+                <Text style={styles.votantesSectionTitle}>{t('pendingVoters')}</Text>
+                {votantes.filter((v) => !v.haVotado).length === 0 ? (
+                  <Text style={styles.votantesEmpty}>{t('allHaveVoted')}</Text>
+                ) : (
+                  votantes.filter((v) => !v.haVotado).map((v) => (
+                    <View key={v.phone_usuario} style={styles.votantesRow}>
+                      <Pressable onPress={() => { if (v.avatar_url) setExpandedAvatar(v.avatar_url); }}>
+                        {v.avatar_url ? (
+                          <Image source={{ uri: v.avatar_url }} style={styles.votantesAvatar} />
+                        ) : (
+                          <View style={[styles.votantesAvatar, styles.votantesAvatarPlaceholder]}>
+                            <MaterialIcons name="person" size={22} color="#FFF" />
+                          </View>
+                        )}
+                      </Pressable>
+                      <Text style={styles.votantesNick}>{displayName(v)}</Text>
+                    </View>
+                  ))
+                )}
+                <Text style={styles.votantesSectionTitle}>{t('completedVoters')}</Text>
+                {votantes.filter((v) => v.haVotado).map((v) => (
                   <View key={v.phone_usuario} style={styles.votantesRow}>
                     <Pressable onPress={() => { if (v.avatar_url) setExpandedAvatar(v.avatar_url); }}>
                       {v.avatar_url ? (
@@ -332,14 +391,35 @@ export default function VoteScreen() {
                     </Pressable>
                     <Text style={styles.votantesNick}>{displayName(v)}</Text>
                   </View>
-                );
-              })
+                ))}
+              </>
+            ) : (
+              votantes.map((v) => (
+                <View key={v.phone_usuario} style={styles.votantesRow}>
+                  <Pressable onPress={() => { if (v.avatar_url) setExpandedAvatar(v.avatar_url); }}>
+                    {v.avatar_url ? (
+                      <Image source={{ uri: v.avatar_url }} style={styles.votantesAvatar} />
+                    ) : (
+                      <View style={[styles.votantesAvatar, styles.votantesAvatarPlaceholder]}>
+                        <MaterialIcons name="person" size={22} color="#FFF" />
+                      </View>
+                    )}
+                  </Pressable>
+                  <Text style={styles.votantesNick}>{displayName(v)}</Text>
+                </View>
+              ))
             )}
           </View>
         )}
 
         {encuesta.finalizada && (
           <Text style={styles.votedNotice}>{t('thisPollClosed')}</Text>
+        )}
+
+        {hasVoted && !encuesta.finalizada && !canShowResults && (
+          <View style={styles.hiddenNotice}>
+            <Text style={styles.hiddenNoticeText}>{t('votesHidden')}</Text>
+          </View>
         )}
 
         <View style={styles.optionsContainer}>
@@ -376,7 +456,7 @@ export default function VoteScreen() {
                       )}
                     </View>
                   </View>
-                  {!showVoteUI && (
+                  {!showVoteUI && canShowResults && (
                     <View style={styles.optionStats}>
                       <View style={styles.barBg}>
                         <View style={[styles.barFill, isWinner && styles.barFillWinner, { width: `${pct}%` }]} />
@@ -413,6 +493,15 @@ export default function VoteScreen() {
                   onPress: async () => {
                     if (!groupId) return;
                     setIsDeleting(true);
+                    const { data: imgData } = await supabase
+                      .from('encuesta_imagenes')
+                      .select('r2_key')
+                      .eq('id_encuesta', groupId)
+                      .maybeSingle();
+                    if (imgData?.r2_key) {
+                      deleteEncuestaImageCache(imgData.r2_key).catch(() => {});
+                      supabase.functions.invoke('r2-delete', { body: { key: imgData.r2_key } }).catch(() => {});
+                    }
                     const { error } = await supabase.from('encuestas').delete().eq('id', groupId);
                     setIsDeleting(false);
                     if (error) { setErrorMessage(error.message); return; }
@@ -457,6 +546,33 @@ export default function VoteScreen() {
           </Pressable>
         )}
 
+        {hasVoted && esOwner && !encuesta.finalizada && (
+          <Pressable
+            style={styles.finalizeButton}
+            onPress={() => {
+              Alert.alert(t('finalizePoll'), t('finalizePollConfirm'), [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                  text: t('finalizePoll'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (!groupId) return;
+                    const { error } = await supabase.rpc('finalizar_encuesta_parcial', { p_id_encuesta: groupId });
+                    if (error) { setErrorMessage(error.message); return; }
+                    const cached = await loadCache();
+                    if (cached) {
+                      cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
+                      await saveCache(cached);
+                    }
+                    router.replace('/groups');
+                  },
+                },
+              ]);
+            }}>
+            <Text style={styles.finalizeButtonText}>{t('finalizePoll')}</Text>
+          </Pressable>
+        )}
+
         {encuesta.finalizada && (
           <Pressable
             style={[styles.finalizadaDeleteButton, isDeleting && styles.deleteButtonDisabled]}
@@ -470,9 +586,65 @@ export default function VoteScreen() {
                   onPress: async () => {
                     if (!groupId) return;
                     setIsDeleting(true);
+                    const { data: imgData } = await supabase
+                      .from('encuesta_imagenes')
+                      .select('r2_key')
+                      .eq('id_encuesta', groupId)
+                      .maybeSingle();
+                    if (imgData?.r2_key) {
+                      deleteEncuestaImageCache(imgData.r2_key).catch(() => {});
+                      supabase.functions.invoke('r2-delete', { body: { key: imgData.r2_key } }).catch(() => {});
+                    }
                     const { error } = await supabase.rpc('eliminar_encuesta_finalizada', { p_id_encuesta: groupId });
                     setIsDeleting(false);
                     if (error) { setErrorMessage(error.message); return; }
+                    const cached = await loadCache();
+                    if (cached) {
+                      cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
+                      await saveCache(cached);
+                    }
+                    router.replace('/groups');
+                  },
+                },
+              ]);
+            }}>
+            <Text style={styles.finalizadaDeleteButtonText}>
+              {isDeleting ? t('eliminating') : t('deletePoll')}
+            </Text>
+          </Pressable>
+        )}
+
+        {hasVoted && !encuesta.finalizada && !canShowResults && (
+          <Pressable
+            style={[styles.finalizadaDeleteButton, isDeleting && styles.deleteButtonDisabled]}
+            disabled={isDeleting}
+            onPress={() => {
+              if (!groupId) return;
+              Alert.alert(t('deletePoll'), esOwner ? t('confirmDeleteText') : t('confirmHideText'), [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                  text: t('delete'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    setIsDeleting(true);
+                    if (esOwner) {
+                      const { data: imgData } = await supabase
+                        .from('encuesta_imagenes')
+                        .select('r2_key')
+                        .eq('id_encuesta', groupId)
+                        .maybeSingle();
+                      if (imgData?.r2_key) {
+                        deleteEncuestaImageCache(imgData.r2_key).catch(() => {});
+                        supabase.functions.invoke('r2-delete', { body: { key: imgData.r2_key } }).catch(() => {});
+                      }
+                      await supabase.from('encuestas').delete().eq('id', groupId);
+                    } else {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        await supabase.from('encuestas_eliminadas').insert({ id_encuesta: groupId, user_id: user.id });
+                      }
+                    }
+                    setIsDeleting(false);
                     const cached = await loadCache();
                     if (cached) {
                       cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
@@ -560,6 +732,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
     fontSize: 14,
+  },
+  hiddenNotice: {
+    backgroundColor: '#FFF4E5',
+    borderWidth: 1,
+    borderColor: '#FFA000',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+  },
+  hiddenNoticeText: {
+    color: '#8D6E00',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   optionsContainer: {
     gap: 10,
@@ -758,6 +944,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+  votantesSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#555',
+    marginTop: 8,
+    marginBottom: 4,
+  },
   leaveButton: {
     marginTop: 12,
     borderWidth: 1,
@@ -768,6 +961,19 @@ const styles = StyleSheet.create({
   },
   leaveButtonText: {
     color: '#FFA000',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  finalizeButton: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#0F8A3E',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  finalizeButtonText: {
+    color: '#0F8A3E',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -787,6 +993,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
+  confirmationIcon: {
+    marginBottom: 16,
+  },
+  confirmationTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F8A3E',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  confirmationVoted: {
+    fontSize: 16,
+    color: '#222',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  confirmationSecret: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 32,
+  },
+  confirmationCloseBtn: {
+    backgroundColor: '#1F6FEB',
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    borderRadius: 10,
+  },
+  confirmationCloseBtnText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -797,5 +1037,11 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width * 0.7,
     height: Dimensions.get('window').width * 0.7,
     borderRadius: 16,
+  },
+  encuestaImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 12,
   },
 });
