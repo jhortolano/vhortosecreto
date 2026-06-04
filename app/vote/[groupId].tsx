@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image as RNImage, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { fetchProfile } from '@/lib/profile';
 import { Image } from 'expo-image';
@@ -84,6 +84,7 @@ export default function VoteScreen() {
         if (imgData) {
           const localUri = await ensureImageDownloaded(imgData.r2_key, imgData.r2_url);
           setEncuestaImageUri(localUri);
+          RNImage.getSize(localUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
         }
 
         const { data: { user } } = await supabase.auth.getUser();
@@ -345,11 +346,6 @@ export default function VoteScreen() {
             source={{ uri: encuestaImageUri }}
             style={[styles.encuestaImage, encuestaImageSize && { aspectRatio: encuestaImageSize.width / encuestaImageSize.height }]}
             contentFit="contain"
-            onLoad={(e) => {
-              if (!encuestaImageSize) {
-                setEncuestaImageSize({ width: e.source.width, height: e.source.height });
-              }
-            }}
           />
         )}
 
@@ -1052,5 +1048,6 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 10,
     marginBottom: 12,
+    minHeight: 120,
   },
 });
