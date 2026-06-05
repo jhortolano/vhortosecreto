@@ -348,6 +348,53 @@ export default function VoteScreen() {
             <Text style={styles.votantesArrow}>{showVotantes ? '▲' : '▼'}</Text>
           </Pressable>
 
+        {showVotantes && (
+          <View style={styles.votantesList}>
+            {votantesLoading ? (
+              <Text style={styles.votantesLoading}>{t('loadingParticipants')}</Text>
+            ) : votantes.length === 0 ? (
+              <Text style={styles.votantesEmpty}>{t('noParticipants')}</Text>
+            ) : hasVoted && !encuesta.finalizada ? (
+              <>
+                <Text style={styles.votantesSectionTitle}>{t('pendingVoters')}</Text>
+                {votantes.filter((v) => !v.haVotado).length === 0 ? (
+                  <Text style={styles.votantesEmpty}>{t('allHaveVoted')}</Text>
+                ) : (
+                  votantes.filter((v) => !v.haVotado).map((v) => (
+                    <View key={v.phone_usuario} style={styles.votantesRow}>
+                      <Pressable onPress={() => { if (v.avatar_url) setExpandedAvatar(v.avatar_url); }}>
+                        {v.avatar_url ? (
+                          <Image source={{ uri: v.avatar_url }} style={styles.votantesAvatar} />
+                        ) : (
+                          <View style={[styles.votantesAvatar, styles.votantesAvatarPlaceholder]}>
+                            <MaterialIcons name="person" size={22} color="#FFF" />
+                          </View>
+                        )}
+                      </Pressable>
+                      <Text style={styles.votantesName}>{v.nick_usuario || v.phone_usuario}</Text>
+                    </View>
+                  ))
+                )}
+              </>
+            ) : (
+              votantes.map((v) => (
+                <View key={v.phone_usuario} style={styles.votantesRow}>
+                  <Pressable onPress={() => { if (v.avatar_url) setExpandedAvatar(v.avatar_url); }}>
+                    {v.avatar_url ? (
+                      <Image source={{ uri: v.avatar_url }} style={styles.votantesAvatar} />
+                    ) : (
+                      <View style={[styles.votantesAvatar, styles.votantesAvatarPlaceholder]}>
+                        <MaterialIcons name="person" size={22} color="#FFF" />
+                      </View>
+                    )}
+                  </Pressable>
+                  <Text style={styles.votantesName}>{v.nick_usuario || v.phone_usuario}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        )}
+
           {encuestaImageUri && (
             <Image
               source={{ uri: encuestaImageUri }}
