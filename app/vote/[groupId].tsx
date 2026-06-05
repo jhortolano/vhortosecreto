@@ -1099,16 +1099,13 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   reportButton: {
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: '#C62828',
-    borderRadius: 10,
-    paddingVertical: 10,
+    marginTop: 32,
     alignItems: 'center',
   },
   reportButtonText: {
-    color: '#C62828',
-    fontWeight: '500',
-    fontSize: 14,
+    color: '#999',
+    fontWeight: '400',
+    fontSize: 12,
+    textDecorationLine: 'underline',
   },
 });
