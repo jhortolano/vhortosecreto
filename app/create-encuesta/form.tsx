@@ -172,10 +172,11 @@ export default function CreateEncuestaFormScreen() {
         }
         imagenKey = uploadResult.key;
         imagenUrl = uploadResult.url;
-      } catch {
+      } catch (imageErr) {
+        console.error('r2-upload exception:', imageErr);
         setSaving(false);
         setUploadingImage(false);
-        setError('Error al procesar la imagen.');
+        setError('La imagen no se pudo subir por un problema temporal. Inténtalo de nuevo más tarde.');
         return;
       }
       setUploadingImage(false);
