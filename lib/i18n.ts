@@ -209,8 +209,11 @@ const translations: Record<Lang, Record<string, string>> = {
 };
 
 let currentLang: Lang = 'es';
+let initialized = false;
 
 export function initLocale(): Lang {
+  if (initialized) return currentLang;
+  initialized = true;
   const locales = getLocales();
   const langCode = locales?.[0]?.languageCode as Lang | undefined;
   if (langCode && translations[langCode]) {
