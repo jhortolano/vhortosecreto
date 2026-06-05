@@ -283,7 +283,7 @@ export default function VoteScreen() {
 
   const hasVoted = haVotado;
   const showVoteUI = encuesta && !encuesta.finalizada && !hasVoted;
-  const canShowResults = encuesta?.finalizada || !hasVoted || ((encuesta?.personas_votadas ?? 0) >= 4 && ((encuesta?.personas_votadas ?? 0) / (encuesta?.votantes ?? 1)) >= 0.5);
+  const canShowResults = encuesta?.finalizada || !hasVoted || ((encuesta?.personas_votadas ?? 0) >= 4 && ((encuesta?.personas_votadas ?? 0) / (encuesta?.votantes ?? 1)) >= 0.7);
 
   if (isLoading) {
     return (
