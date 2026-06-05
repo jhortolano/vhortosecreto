@@ -205,7 +205,7 @@ const translations: Record<Lang, Record<string, string>> = {
     reportConfirmTitle: '¿Confirmas que deseas reportar esta votación?',
     reportContentWarning: 'Por favor, confirma solo si esta votación o sus imágenes contienen:\n\n• Material pornográfico o de desnudez.\n• Contenido violento, delictivo, de odio o acoso.\n• Elementos que infrinjan la ley.',
     reportFakeWarning: 'Nota: Las denuncias falsas reiteradas o por diversión en votaciones legítimas serán penalizadas con el baneo de la app.',
-    reportSent: 'Encuesta reportada. Gracias por tu colaboración.',
+    reportSent: 'Gracias. Hemos recibido tu reporte. Esta votación ha sido ocultada para ti mientras la revisamos.',
   },
   en: {
     appName: 'Secret Poll',
@@ -409,7 +409,7 @@ const translations: Record<Lang, Record<string, string>> = {
     reportConfirmTitle: 'Do you confirm you want to report this poll?',
     reportContentWarning: 'Please confirm only if this poll or its images contain:\n\n• Pornographic or nudity material.\n• Violent, criminal, hate or harassment content.\n• Elements that break the law.',
     reportFakeWarning: 'Note: Repeated false reports for fun on legitimate polls will result in a ban from the app.',
-    reportSent: 'Poll reported. Thank you for your collaboration.',
+    reportSent: 'Thank you. We have received your report. This poll has been hidden from you while we review it.',
   },
   it: {
     appName: 'Sondaggio Segreto',
@@ -613,7 +613,7 @@ const translations: Record<Lang, Record<string, string>> = {
     reportConfirmTitle: 'Confermi di voler segnalare questo sondaggio?',
     reportContentWarning: 'Conferma solo se questo sondaggio o le sue immagini contengono:\n\n• Materiale pornografico o di nudo.\n• Contenuti violenti, criminali, di odio o molestie.\n• Elementi che violano la legge.',
     reportFakeWarning: 'Nota: Segnalazioni false ripetute per divertimento su sondaggi legittimi comporteranno il ban dall\'app.',
-    reportSent: 'Sondaggio segnalato. Grazie per la collaborazione.',
+    reportSent: 'Grazie. Abbiamo ricevuto la tua segnalazione. Questo sondaggio è stato nascosto per te mentre lo esaminiamo.',
   },
   fr: {
     appName: 'Sondage Secret',
@@ -817,7 +817,7 @@ const translations: Record<Lang, Record<string, string>> = {
     reportConfirmTitle: 'Confirmez-vous vouloir signaler ce sondage?',
     reportContentWarning: 'Confirmez uniquement si ce sondage ou ses images contiennent:\n\n• Du matériel pornographique ou de nudité.\n• Du contenu violent, criminel, haineux ou de harcèlement.\n• Des éléments qui enfreignent la loi.',
     reportFakeWarning: 'Note: Les fausses signalements répétés pour le plaisir sur des sondages légitimes entraîneront un bannissement de l\'app.',
-    reportSent: 'Sondage signalé. Merci pour votre collaboration.',
+    reportSent: 'Merci. Nous avons reçu votre signalement. Ce sondage a été masqué pour vous pendant que nous l\'examinons.',
   },
   de: {
     appName: 'Geheime Umfrage',
@@ -1021,7 +1021,7 @@ const translations: Record<Lang, Record<string, string>> = {
     reportConfirmTitle: 'Bestätigst du, dass du diese Umfrage melden möchtest?',
     reportContentWarning: 'Bitte bestätige nur, wenn diese Umfrage oder ihre Bilder Folgendes enthalten:\n\n• Pornografisches oder Nacktmaterial.\n• Gewalttätige, kriminelle, hassvolle oder belästigende Inhalte.\n• Elemente, die gegen das Gesetz verstoßen.',
     reportFakeWarning: 'Hinweis: Wiederholte Falschmeldungen zum Spaß bei legitimen Umfragen führen zu einem Ausschluss aus der App.',
-    reportSent: 'Umfrage gemeldet. Vielen Dank für deine Mitarbeit.',
+    reportSent: 'Danke. Wir haben deine Meldung erhalten. Diese Umfrage wurde für dich ausgeblendet, während wir sie überprüfen.',
   },
 };
 

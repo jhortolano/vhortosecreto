@@ -309,7 +309,13 @@ export default function VoteScreen() {
               cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
               await saveCache(cached);
             }
-            router.replace('/groups');
+            setSuccessMessage(t('reportSent'));
+            Alert.alert(t('reportPoll'), t('reportSent'), [
+              {
+                text: t('done'),
+                onPress: () => router.replace('/groups'),
+              },
+            ]);
           } catch {
             setErrorMessage(t('error'));
           }

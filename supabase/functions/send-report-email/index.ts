@@ -24,8 +24,10 @@ serve(async (req) => {
 
   try {
     const { encuesta_id, reported_by_user_id } = await req.json() as ReportPayload;
+    console.log('send-report-email called with:', { encuesta_id, reported_by_user_id });
 
     if (!encuesta_id || !reported_by_user_id) {
+      console.error('Missing required fields');
       return new Response(JSON.stringify({ error: 'Missing encuesta_id or reported_by_user_id' }), { status: 400 });
     }
 
@@ -38,13 +40,16 @@ serve(async (req) => {
       .single();
 
     if (encErr || !encuesta) {
+      console.error('Encuesta not found:', encErr?.message);
       return new Response(JSON.stringify({ error: 'Encuesta not found' }), { status: 404 });
     }
+    console.log('Found encuesta:', encuesta.titulo);
 
     const { data: opciones } = await supabase
       .from('encuestas_opciones')
       .select('opcion_texto, total_votos')
       .eq('id_encuesta', encuesta_id);
+    console.log(`Found ${opciones?.length ?? 0} opciones`);
 
     const { data: participantes } = await supabase
       .from('encuestas_usuarios')
@@ -62,6 +67,7 @@ serve(async (req) => {
       .select('email, phone, nick')
       .eq('id', reported_by_user_id)
       .single();
+    console.log('Reporter:', reporter?.email ?? 'unknown');
 
     let html = `
       <h1>Encuesta Reportada</h1>
@@ -87,6 +93,7 @@ serve(async (req) => {
       </table>
     `;
 
+    console.log('Sending email via Resend...');
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -101,10 +108,12 @@ serve(async (req) => {
       }),
     });
 
+    const resBody = await res.text();
+    console.log('Resend response status:', res.status);
+    console.log('Resend response body:', resBody);
+
     if (!res.ok) {
-      const errText = await res.text();
-      console.error('Resend error:', errText);
-      return new Response(JSON.stringify({ error: 'Failed to send email' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Failed to send email', detail: resBody }), { status: 500 });
     }
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
