@@ -117,6 +117,8 @@ export default function VoteScreen() {
             .maybeSingle();
           setHaVotado(!!voted);
         }
+
+        void fetchVotantesData(e, !!voted);
       } catch (e) {
         setErrorMessage(e instanceof Error ? e.message : t('error'));
       } finally {
@@ -223,12 +225,14 @@ export default function VoteScreen() {
     }
   };
 
-  const toggleVotantes = async () => {
-    if (showVotantes) {
-      setShowVotantes(false);
-      return;
-    }
-    if (!groupId) return;
+  const toggleVotantes = () => {
+    setShowVotantes(prev => !prev);
+  };
+
+  const fetchVotantesData = async (encuestaData?: Encuesta, haVotadoActual?: boolean) => {
+    const enc = encuestaData ?? encuesta;
+    const hv = haVotadoActual ?? haVotado;
+    if (!groupId || !enc) return;
     setVotantesLoading(true);
     const { data, error } = await supabase
       .from('encuestas_usuarios')
@@ -236,11 +240,11 @@ export default function VoteScreen() {
       .eq('id_encuesta', groupId)
       .order('nick_usuario', { ascending: true });
     let list: Votante[] = (data ?? []).map((v) => ({ ...v, avatar_url: null, haVotado: false }));
-    if (!error && encuesta && !list.some((v) => v.phone_usuario === encuesta.owner)) {
-      list = [{ phone_usuario: encuesta.owner, nick_usuario: encuesta.owner_nick, avatar_url: null, haVotado: false }, ...list];
+    if (!error && enc && !list.some((v) => v.phone_usuario === enc.owner)) {
+      list = [{ phone_usuario: enc.owner, nick_usuario: enc.owner_nick, avatar_url: null, haVotado: false }, ...list];
     }
 
-    const isVotadasCase = haVotado && !encuesta?.finalizada;
+    const isVotadasCase = hv && !enc?.finalizada;
     if (isVotadasCase) {
       const { data: haVotadoData } = await supabase
         .from('encuestas_ha_votado')
@@ -271,7 +275,6 @@ export default function VoteScreen() {
     if (Object.keys(contactNames).length === 0) {
       await loadContactNames();
     }
-    setShowVotantes(true);
   };
 
   const displayName = (v: Votante) => {
