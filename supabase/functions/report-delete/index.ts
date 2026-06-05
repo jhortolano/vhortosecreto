@@ -39,14 +39,5 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
-  return new Response(`
-    <html><body style="font-family:sans-serif;padding:40px;text-align:center;background:#f5f5f5;">
-      <h1 style="color:#0F8A3E;">Encuesta eliminada</h1>
-      <p>La encuesta <strong>${encuesta_id}</strong> ha sido eliminada permanentemente.</p>
-      <a href="https://admin-vhortosecreto.vercel.app/encuestas" style="color:#1F6FEB;">Volver al panel</a>
-    </body></html>
-  `, {
-    status: 200,
-    headers: { 'Content-Type': 'text/html' },
-  });
+  return new Response('Encuesta borrada OK', { status: 200 });
 });
