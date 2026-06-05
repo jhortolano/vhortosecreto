@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts';
 
 interface ReportPayload {
   encuesta_id: string;
@@ -11,9 +12,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
   }
 
-  const resendApiKey = Deno.env.get('RESEND_API_KEY');
-  if (!resendApiKey) {
-    return new Response(JSON.stringify({ error: 'RESEND_API_KEY not configured' }), { status: 500 });
+  const smtpHost = Deno.env.get('SMTP_HOST');
+  const smtpPort = parseInt(Deno.env.get('SMTP_PORT') || '587');
+  const smtpUser = Deno.env.get('SMTP_USER');
+  const smtpPass = Deno.env.get('SMTP_PASS');
+  const notifyEmail = Deno.env.get('NOTIFY_EMAIL') || 'topfcliga@gmail.com';
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return new Response(JSON.stringify({ error: 'SMTP env vars not configured' }), { status: 500 });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -93,28 +99,23 @@ serve(async (req) => {
       </table>
     `;
 
-    console.log('Sending email via Resend...');
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Voto Secreto <reportes@vhortosecreto.com>',
-        to: 'topfcliga@gmail.com',
-        subject: `🚨 Encuesta reportada: ${encuesta.titulo}`,
-        html,
-      }),
+    console.log('Sending email via SMTP...');
+    const client = new SmtpClient();
+    await client.connectTLS({
+      hostname: smtpHost,
+      port: smtpPort,
+      username: smtpUser,
+      password: smtpPass,
     });
-
-    const resBody = await res.text();
-    console.log('Resend response status:', res.status);
-    console.log('Resend response body:', resBody);
-
-    if (!res.ok) {
-      return new Response(JSON.stringify({ error: 'Failed to send email', detail: resBody }), { status: 500 });
-    }
+    await client.send({
+      from: smtpUser,
+      to: notifyEmail,
+      subject: `Encuesta reportada: ${encuesta.titulo}`,
+      content: 'html',
+      html,
+    });
+    await client.close();
+    console.log('Email sent successfully');
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err) {
