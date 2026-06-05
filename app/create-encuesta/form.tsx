@@ -46,7 +46,6 @@ export default function CreateEncuestaFormScreen() {
   const [opciones, setOpciones] = useState<string[]>(['', '']);
   const [multiopcion, setMultiopcion] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
-  const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adLoading, setAdLoading] = useState(false);
@@ -81,23 +80,13 @@ export default function CreateEncuestaFormScreen() {
       quality: 1,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      setPendingImageUri(result.assets[0].uri);
+      try {
+        const resized = await resizeImage(result.assets[0].uri);
+        setSelectedImageUri(resized);
+      } catch {
+        setSelectedImageUri(result.assets[0].uri);
+      }
     }
-  };
-
-  const confirmImage = async () => {
-    if (!pendingImageUri) return;
-    try {
-      const resized = await resizeImage(pendingImageUri);
-      setSelectedImageUri(resized);
-    } catch {
-      setSelectedImageUri(pendingImageUri);
-    }
-    setPendingImageUri(null);
-  };
-
-  const cancelPendingImage = () => {
-    setPendingImageUri(null);
   };
 
   const removeImage = () => {
@@ -307,19 +296,7 @@ export default function CreateEncuestaFormScreen() {
           placeholder="Ej.: Donde cenamos el viernes"
         />
 
-        {pendingImageUri ? (
-          <View style={styles.pendingImageContainer}>
-            <Image source={{ uri: pendingImageUri }} style={styles.imagePreview} contentFit="cover" />
-            <View style={styles.pendingImageActions}>
-              <Pressable style={styles.pendingCancelBtn} onPress={cancelPendingImage}>
-                <Text style={styles.pendingCancelText}>{t('cancel')}</Text>
-              </Pressable>
-              <Pressable style={styles.pendingConfirmBtn} onPress={confirmImage}>
-                <Text style={styles.pendingConfirmText}>OK</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : selectedImageUri ? (
+        {selectedImageUri ? (
           <Pressable style={styles.imagePickerBtn} onPress={removeImage}>
             <View style={styles.imagePreviewWrap}>
               <Image source={{ uri: selectedImageUri }} style={styles.imagePreview} contentFit="cover" />
@@ -473,32 +450,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   imagePickerText: { color: '#1F6FEB', fontWeight: '600', fontSize: 14 },
-  pendingImageContainer: {
-    marginBottom: 14,
-    alignItems: 'center',
-    gap: 10,
-  },
-  pendingImageActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  pendingCancelBtn: {
-    flex: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#DDD',
-  },
-  pendingCancelText: { color: '#888', fontWeight: '600', fontSize: 14 },
-  pendingConfirmBtn: {
-    flex: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: '#1F6FEB',
-  },
-  pendingConfirmText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
   imagePreviewWrap: { alignItems: 'center', gap: 6, width: '100%' },
   imagePreview: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#F0F0F0' },
   imageRemoveText: { color: '#C62828', fontWeight: '600', fontSize: 13 },
