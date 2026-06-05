@@ -341,20 +341,20 @@ export default function VoteScreen() {
           {encuesta.multiopcion ? ` · ${t('multioption')}` : ''}
         </Text>
 
-        {encuestaImageUri && (
-          <Image
-            source={{ uri: encuestaImageUri }}
-            style={[styles.encuestaImage, encuestaImageSize && { aspectRatio: encuestaImageSize.width / encuestaImageSize.height }]}
-            contentFit="contain"
-          />
-        )}
+          <Pressable style={styles.votantesToggle} onPress={toggleVotantes}>
+            <Text style={styles.votantesToggleText}>
+              {showVotantes ? t('hideParticipants') : t('viewParticipants')}
+            </Text>
+            <Text style={styles.votantesArrow}>{showVotantes ? '▲' : '▼'}</Text>
+          </Pressable>
 
-        <Pressable style={styles.votantesToggle} onPress={toggleVotantes}>
-          <Text style={styles.votantesToggleText}>
-            {showVotantes ? t('hideParticipants') : t('viewParticipants')}
-          </Text>
-          <Text style={styles.votantesArrow}>{showVotantes ? '▲' : '▼'}</Text>
-        </Pressable>
+          {encuestaImageUri && (
+            <Image
+              source={{ uri: encuestaImageUri }}
+              style={[styles.encuestaImage, encuestaImageSize && { aspectRatio: encuestaImageSize.width / encuestaImageSize.height }]}
+              contentFit="contain"
+            />
+          )}
 
         {showVotantes && (
           <View style={styles.votantesList}>
