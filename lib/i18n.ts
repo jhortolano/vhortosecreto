@@ -212,24 +212,12 @@ let currentLang: Lang = 'es';
 
 export function initLocale(): Lang {
   const locales = getLocales();
-  let langCode: Lang | undefined;
-  for (const loc of locales) {
-    if (loc?.languageCode && loc.languageCode.length === 2) {
-      langCode = loc.languageCode as Lang;
-      break;
+  if (locales && locales.length > 0) {
+    const tag = locales[0].languageTag;
+    const code = tag?.substring(0, 2) as Lang;
+    if (translations[code]) {
+      currentLang = code;
     }
-    if (loc?.languageTag && loc.languageTag.length >= 2) {
-      const tag = loc.languageTag.substring(0, 2) as Lang;
-      if (translations[tag]) {
-        langCode = tag;
-        break;
-      }
-    }
-  }
-  if (langCode && translations[langCode]) {
-    currentLang = langCode;
-  } else {
-    currentLang = 'es';
   }
   return currentLang;
 }

@@ -410,6 +410,14 @@ export default function VoteScreen() {
           </View>
         )}
 
+          {encuestaImageUri && (
+            <Image
+              source={{ uri: encuestaImageUri }}
+              style={[styles.encuestaImage, encuestaImageSize && { aspectRatio: encuestaImageSize.width / encuestaImageSize.height }]}
+              contentFit="contain"
+            />
+          )}
+
         {encuesta.finalizada && (
           <Text style={styles.votedNotice}>{t('thisPollClosed')}</Text>
         )}
