@@ -212,13 +212,16 @@ let currentLang: Lang = 'es';
 
 export function initLocale(): Lang {
   const locales = getLocales();
+  console.log('[i18n] getLocales():', JSON.stringify(locales));
   if (locales && locales.length > 0) {
     const tag = locales[0].languageTag;
     const code = tag?.substring(0, 2) as Lang;
+    console.log('[i18n] detected languageTag:', tag, '→ code:', code, 'supported:', !!translations[code]);
     if (translations[code]) {
       currentLang = code;
     }
   }
+  console.log('[i18n] final currentLang:', currentLang);
   return currentLang;
 }
 
