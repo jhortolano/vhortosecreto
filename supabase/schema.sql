@@ -718,6 +718,37 @@ insert into public.app_config (key, value) values ('min_version', '1.0.0')
 on conflict (key) do nothing;
 
 -- ============================================================
+-- Reportes de encuestas
+-- ============================================================
+
+alter table public.encuestas add column if not exists reportada boolean not null default false;
+
+create table if not exists public.encuestas_reportes (
+  id_encuesta uuid not null references public.encuestas(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (id_encuesta, user_id)
+);
+
+alter table public.encuestas_reportes enable row level security;
+
+drop policy if exists "encuestas_reportes_insert_own" on public.encuestas_reportes;
+create policy "encuestas_reportes_insert_own"
+on public.encuestas_reportes
+for insert
+to authenticated
+with check (user_id = auth.uid());
+
+drop policy if exists "encuestas_reportes_select_admin" on public.encuestas_reportes;
+create policy "encuestas_reportes_select_admin"
+on public.encuestas_reportes
+for select
+to authenticated
+using (
+  exists (select 1 from public.profiles where id = auth.uid() and phone = 'admin')
+);
+
+-- ============================================================
 -- Finalizar encuesta parcial (creador elimina no votantes)
 -- ============================================================
 
