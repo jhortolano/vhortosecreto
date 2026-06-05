@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-import { SmtpClient } from 'https://deno.land/x/smtp@v0.7.0/mod.ts';
 
 interface ReportPayload {
   encuesta_id: string;
@@ -12,27 +11,20 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
   }
 
-  const smtpHost = Deno.env.get('SMTP_HOST');
-  const smtpPort = parseInt(Deno.env.get('SMTP_PORT') || '587');
-  const smtpUser = Deno.env.get('SMTP_USER');
-  const smtpPass = Deno.env.get('SMTP_PASS');
-  const notifyEmail = Deno.env.get('NOTIFY_EMAIL') || 'topfcliga@gmail.com';
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    return new Response(JSON.stringify({ error: 'SMTP env vars not configured' }), { status: 500 });
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+  if (!resendApiKey) {
+    return new Response(JSON.stringify({ error: 'RESEND_API_KEY not configured' }), { status: 500 });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const deleteSecret = Deno.env.get('REPORT_DELETE_SECRET');
+  const notifyEmail = Deno.env.get('NOTIFY_EMAIL') || 'topfcliga@gmail.com';
   if (!supabaseUrl || !supabaseServiceKey) {
     return new Response(JSON.stringify({ error: 'Supabase env vars not configured' }), { status: 500 });
   }
 
   const supabaseProject = supabaseUrl.replace('https://', '').replace('.supabase.co', '');
-  const deleteUrl = deleteSecret
-    ? `https://${supabaseProject}.supabase.co/functions/v1/report-delete?token=${deleteSecret}&id=${encuesta_id}`
-    : null;
 
   try {
     const { encuesta_id, reported_by_user_id } = await req.json() as ReportPayload;
@@ -42,6 +34,10 @@ serve(async (req) => {
       console.error('Missing required fields');
       return new Response(JSON.stringify({ error: 'Missing encuesta_id or reported_by_user_id' }), { status: 400 });
     }
+
+    const deleteUrl = deleteSecret
+      ? `https://${supabaseProject}.supabase.co/functions/v1/report-delete?token=${deleteSecret}&id=${encuesta_id}`
+      : null;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -107,22 +103,29 @@ serve(async (req) => {
       ${deleteUrl ? `<p style="margin-top:24px;"><a href="${deleteUrl}" style="background:#C62828;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Eliminar esta encuesta</a></p>` : ''}
     `;
 
-    console.log('Sending email via SMTP...');
-    const client = new SmtpClient();
-    await client.connectTLS({
-      hostname: smtpHost,
-      port: smtpPort,
-      username: smtpUser,
-      password: smtpPass,
+    console.log('Sending email via Resend...');
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Alertas VhortoSecreto <onboarding@resend.dev>',
+        to: notifyEmail,
+        subject: `Encuesta reportada: ${encuesta.titulo}`,
+        html,
+      }),
     });
-    await client.send({
-      from: smtpUser,
-      to: notifyEmail,
-      subject: `Encuesta reportada: ${encuesta.titulo}`,
-      content: 'html',
-      html,
-    });
-    await client.close();
+
+    const resBody = await res.text();
+    console.log('Resend response status:', res.status);
+    console.log('Resend response body:', resBody);
+
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: 'Failed to send email', detail: resBody }), { status: 500 });
+    }
+
     console.log('Email sent successfully');
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
