@@ -81,7 +81,9 @@ begin
 
     if coalesce(v_encuesta_abierta, false) then
       update public.encuestas
-      set personas_votadas = personas_votadas + 1
+      set
+        personas_votadas = personas_votadas + 1,
+        personas_a_votar = personas_votadas + 1
       where id = p_id_encuesta;
     else
       update public.encuestas
