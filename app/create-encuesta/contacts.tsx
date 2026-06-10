@@ -196,6 +196,8 @@ export default function CreateEncuestaContactsScreen() {
       p_phones_participantes: phones,
       p_imagen_key: formData.imagenKey,
       p_imagen_url: formData.imagenUrl,
+      p_abierta: false,
+      p_link_uuid: null,
     });
 
     if (rpcError) {
