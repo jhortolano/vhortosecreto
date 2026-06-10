@@ -18,8 +18,8 @@ export default function CreateEncuestaLayout() {
   const { t } = useT();
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ title: t('participants'), ...backToHomeOptions }} />
-      <Stack.Screen name="form" options={{ title: t('newSurvey') }} />
+      <Stack.Screen name="index" options={{ title: t('newSurvey'), ...backToHomeOptions }} />
+      <Stack.Screen name="contacts" options={{ title: t('participants') }} />
     </Stack>
   );
 }

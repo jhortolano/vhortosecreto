@@ -14,7 +14,7 @@
 
 ## Project structure
 - `/app/` - expo-router pages (index, groups, profile, vote/[groupId], create-encuesta, complete-profile, crear-grupo, grupo/[id], auth/callback)
-- `/lib/` - shared utils (supabase, notifications, i18n, profile, adManager, rewardedAd, uploadAvatar, phoneNormalize, countries, encuestasCache, versionCheck)
+- `/lib/` - shared utils (supabase, notifications, i18n, profile, adManager, rewardedAd, uploadAvatar, phoneNormalize, countries, encuestasCache, versionCheck, offline, offlineQueue)
 - `/context/` - React contexts (createEncuestaContext)
 - `/supabase/` - SQL files (schema.sql, encuestas.sql)
 - `/ios/` - native iOS project (manual Xcode builds)
@@ -63,7 +63,7 @@ key (PK), value
 - Package/bundle ID: `com.termibululu.vhortosecreto`
 - Supabase project: `jheujtrgjwoflanbmzqu.supabase.co`
 - EAS project ID: `39b9d279-72d2-4793-9fdc-8de00d760785`
-- Version: 1.0.11 (Android versionCode: 12, iOS build: 3)
+- Version: 1.0.17 (Android versionCode: 17, iOS build: 5)
 
 ## Auth flow
 - Login: email → OTP → verify → check profile completeness → redirect
@@ -115,9 +115,23 @@ When user changes nick in profile.tsx or completes profile in complete-profile.t
 4. UPDATE grupos_miembros SET nick WHERE phone = phone
 
 ## Builds
-- **Android**: `bash scripts/build-android.sh` → AAB + APK
-- **iOS**: `npx expo prebuild --clean` → open Xcode → Product → Archive → Distribute
+- **Combinado**: `bash scripts/build-vhortosecreto.sh` → Android (AAB + APK) + iOS (Archive + IPA)
+- **Android solo**: `bash scripts/build-android.sh` → AAB + APK
+- **iOS solo**: `npx expo prebuild --clean` → open Xcode → Product → Archive → Distribute
 - Keystore: `release.keystore` (alias: vhortosecreto, pass: julian1234)
+
+## Offline support
+- Auth: `getUserId()` tries `getUser()` first, falls back to `getSession()` (local file storage via `supabaseAuthStorage`)
+- Profile: `getProfileWithCache()` fetches profile, caches it; falls back to cache on network failure
+- Groups page: loads cache first, `loadEncuestas()` does NOT redirect on network failure if cached data exists; shows "Sin conexión" banner
+- Vote page: cache-first with `encuestaDetailCache.ts` (5-min TTL); shows cached data when offline
+- Offline queue (`lib/offlineQueue.ts`):
+  - Votes: queued when `votar_encuesta` RPC fails (network error detected)
+  - Salir (leave): queued when `salir_encuesta` RPC fails
+  - Queue processed after successful `loadEncuestas()` (connectivity restored)
+  - Queue also processed on app startup in `_layout.tsx`
+- Network error detection: `error.code` is falsy or message contains "fetch"/"network"/"Failed to"
+- `encuestasCache` now also stores `profile` (phone, nick, avatar_url) for offline identity
 
 ## Admin panel (separate project)
 - `/Volumes/dev/Projects/React/admin-vhortosecreto/`

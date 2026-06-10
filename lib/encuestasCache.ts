@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Profile } from './profile';
 
 const KEY = 'encuestas_cache';
 
@@ -9,6 +10,7 @@ export interface EncuestaCache {
   ownerAvatars: Record<string, string | null>;
   grupos?: { id: string; nombre: string; imagen_url: string | null }[];
   encuestaImages?: Record<string, { r2_key: string; r2_url: string }>;
+  profile?: Profile;
 }
 
 export async function loadCache(): Promise<EncuestaCache | null> {

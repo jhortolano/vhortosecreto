@@ -349,7 +349,7 @@ export default function LoginScreen() {
   if (!sessionChecked) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <Text style={styles.title}>{t('votaciones')}</Text>
+        <Text style={styles.title}>Voto Secreto</Text>
         <Text style={styles.subtitle}>{t('checkingSession')}</Text>
       </View>
     );
@@ -366,7 +366,7 @@ export default function LoginScreen() {
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
-          <Text style={styles.title}>{t('votaciones')}</Text>
+          <Text style={styles.title}>Voto Secreto</Text>
           <Text style={styles.subtitle}>
             {isOtpStep ? t('codeSent') : t('loginPrompt')}
           </Text>

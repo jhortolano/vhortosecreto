@@ -21,6 +21,7 @@ import { router } from 'expo-router';
 import { normalizeContactPhone } from '@/lib/phoneNormalize';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
+import { checkOnline } from '@/lib/offline';
 
 type ContactPick = {
   key: string;
@@ -107,6 +108,10 @@ export default function CrearGrupoScreen() {
   };
 
   const guardar = async () => {
+    if (!(await checkOnline())) {
+      Alert.alert(t('offline'), t('offlineCannotCreate'));
+      return;
+    }
     setError('');
     setSaving(true);
 

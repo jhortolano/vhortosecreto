@@ -6,17 +6,38 @@ export type EncuestaContactPick = {
   phone: string;
 };
 
+export type EncuestaFormData = {
+  titulo: string;
+  opciones: string[];
+  multiopcion: boolean;
+  imagenKey: string | null;
+  imagenUrl: string | null;
+  skipContacts: boolean;
+};
+
 type Ctx = {
   selected: EncuestaContactPick[];
   toggle: (row: EncuestaContactPick) => void;
   setAll: (rows: EncuestaContactPick[]) => void;
+  formData: EncuestaFormData;
+  setFormData: (data: Partial<EncuestaFormData>) => void;
   clear: () => void;
+};
+
+const defaultFormData: EncuestaFormData = {
+  titulo: '',
+  opciones: ['', ''],
+  multiopcion: false,
+  imagenKey: null,
+  imagenUrl: null,
+  skipContacts: false,
 };
 
 const CreateEncuestaContext = createContext<Ctx | null>(null);
 
 export function CreateEncuestaProvider({ children }: { children: ReactNode }) {
   const [selected, setSelected] = useState<EncuestaContactPick[]>([]);
+  const [formData, setFormDataState] = useState<EncuestaFormData>(defaultFormData);
 
   const toggle = useCallback((row: EncuestaContactPick) => {
     setSelected((prev) => {
@@ -28,9 +49,19 @@ export function CreateEncuestaProvider({ children }: { children: ReactNode }) {
 
   const setAll = useCallback((rows: EncuestaContactPick[]) => setSelected(rows), []);
 
-  const clear = useCallback(() => setSelected([]), []);
+  const setFormData = useCallback((data: Partial<EncuestaFormData>) => {
+    setFormDataState((prev) => ({ ...prev, ...data }));
+  }, []);
 
-  const value = useMemo(() => ({ selected, toggle, setAll, clear }), [selected, toggle, setAll, clear]);
+  const clear = useCallback(() => {
+    setSelected([]);
+    setFormDataState(defaultFormData);
+  }, []);
+
+  const value = useMemo(
+    () => ({ selected, toggle, setAll, formData, setFormData, clear }),
+    [selected, toggle, setAll, formData, setFormData, clear],
+  );
 
   return <CreateEncuestaContext.Provider value={value}>{children}</CreateEncuestaContext.Provider>;
 }

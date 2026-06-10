@@ -29,12 +29,17 @@ export async function downloadEncuestaImage(r2Key: string, r2Url: string): Promi
   }
 
   let lastError: unknown;
-  for (const url of urlsToTry) {
-    try {
-      const downloaded = await File.downloadFileAsync(url, new File(localPath));
-      return downloaded.uri;
-    } catch (e) {
-      lastError = e;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    for (const url of urlsToTry) {
+      try {
+        const downloaded = await File.downloadFileAsync(url, new File(localPath));
+        return downloaded.uri;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (attempt < 2) {
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
 

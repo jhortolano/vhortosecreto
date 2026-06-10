@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image as RNImage, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image as RNImage, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { fetchProfile } from '@/lib/profile';
 import { Image } from 'expo-image';
@@ -11,6 +12,8 @@ import { ensureImageDownloaded, deleteEncuestaImageCache } from '@/lib/encuestaI
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
 import { getDetailCache, setDetailCache } from '@/lib/encuestaDetailCache';
+import { getUserId } from '@/lib/offline';
+import { addToQueue } from '@/lib/offlineQueue';
 
 type Encuesta = {
   id: string;
@@ -21,6 +24,8 @@ type Encuesta = {
   multiopcion: boolean;
   votantes: number;
   personas_votadas: number;
+  abierta: boolean;
+  link_uuid: string | null;
 };
 
 type Opcion = {
@@ -54,6 +59,7 @@ export default function VoteScreen() {
   const [expandedAvatar, setExpandedAvatar] = useState<string | null>(null);
   const [encuestaImageUri, setEncuestaImageUri] = useState<string | null>(null);
   const [encuestaImageSize, setEncuestaImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [imageError, setImageError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [voteConfirmation, setVoteConfirmation] = useState<string[] | null>(null);
@@ -61,20 +67,22 @@ export default function VoteScreen() {
   useEffect(() => {
     const doNetworkLoad = async () => {
       if (!groupId) return null;
-      const [{ data: e, error: eErr }, { data: { user } }] = await Promise.all([
-        supabase.from('encuestas').select('id, titulo, owner, owner_nick, finalizada, multiopcion, votantes, personas_votadas').eq('id', groupId).single(),
-        supabase.auth.getUser(),
-      ]);
+      const { data: e, error: eErr } = await supabase
+        .from('encuestas')
+        .select('id, titulo, owner, owner_nick, finalizada, multiopcion, votantes, personas_votadas, abierta, link_uuid')
+        .eq('id', groupId)
+        .single();
       if (eErr || !e) return null;
 
-      if (user) {
-        const profile = await fetchProfile(user.id);
+      const userId = await getUserId();
+      if (userId) {
+        const profile = await fetchProfile(userId);
         setEsOwner(profile?.phone === e.owner);
       }
 
       const [opsResult, votedResult, imgResult] = await Promise.all([
         supabase.from('encuestas_opciones').select('id, opcion_texto, total_votos').eq('id_encuesta', groupId),
-        user ? supabase.from('encuestas_ha_votado').select('id_encuesta').eq('id_encuesta', groupId).eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+        userId ? supabase.from('encuestas_ha_votado').select('id_encuesta').eq('id_encuesta', groupId).eq('user_id', userId).maybeSingle() : Promise.resolve({ data: null }),
         supabase.from('encuesta_imagenes').select('r2_key, r2_url').eq('id_encuesta', groupId).maybeSingle(),
       ]);
 
@@ -87,9 +95,13 @@ export default function VoteScreen() {
       }
 
       if (imgResult.data) {
-        const localUri = await ensureImageDownloaded(imgResult.data.r2_key, imgResult.data.r2_url);
-        setEncuestaImageUri(localUri);
-        RNImage.getSize(localUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
+        try {
+          const localUri = await ensureImageDownloaded(imgResult.data.r2_key, imgResult.data.r2_url);
+          setEncuestaImageUri(localUri);
+          RNImage.getSize(localUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
+        } catch {
+          setImageError(true);
+        }
       }
 
       void fetchVotantesData(e, haVotadoActual, sorted);
@@ -101,6 +113,7 @@ export default function VoteScreen() {
       if (!groupId) return;
       setIsLoading(true);
       setErrorMessage('');
+      setImageError(false);
 
       const cached = await getDetailCache(groupId);
       if (cached) {
@@ -189,34 +202,55 @@ export default function VoteScreen() {
       p_opcion_ids: Array.from(selectedIds),
     });
 
-    setIsSaving(false);
     if (error) {
+      const isNetwork = !error.code || error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to');
+      if (isNetwork) {
+        await addToQueue({
+          type: 'vote',
+          data: { groupId, selectedOptionIds: Array.from(selectedIds) },
+        });
+        const mainCache = await loadCache();
+        if (mainCache && !mainCache.votedIds.includes(groupId)) {
+          mainCache.votedIds.push(groupId);
+          await saveCache(mainCache);
+        }
+        setDetailCache(groupId, {
+          encuesta, opciones, haVotado: true,
+          votantes: [],
+        });
+        setHaVotado(true);
+        setIsSaving(false);
+        setVoteConfirmation(opciones.filter((o) => selectedIds.has(o.id)).map((o) => o.opcion_texto));
+        return;
+      }
+      setIsSaving(false);
       setErrorMessage(error.message);
       return;
     }
 
+    setIsSaving(false);
     setHaVotado(true);
     setVoteConfirmation(opciones.filter((o) => selectedIds.has(o.id)).map((o) => o.opcion_texto));
 
     const { data: e } = await supabase
       .from('encuestas')
-      .select('id, titulo, owner, owner_nick, finalizada, multiopcion, votantes, personas_votadas')
+      .select('id, titulo, owner, owner_nick, finalizada, multiopcion, votantes, personas_votadas, abierta, link_uuid')
       .eq('id', groupId)
       .single();
 
     if (e?.finalizada) {
       setEncuesta(e);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const userId = await getUserId();
+      if (userId) {
         await supabase.from('encuestas_lecturas').upsert(
-          { id_encuesta: e.id, user_id: user.id },
+          { id_encuesta: e.id, user_id: userId },
           { onConflict: 'id_encuesta,user_id' }
         );
       }
       const { data: profile } = await supabase
         .from('profiles')
         .select('phone')
-        .eq('id', user?.id)
+        .eq('id', userId ?? '')
         .single();
       supabase.functions.invoke('send-push', {
         body: {
@@ -233,36 +267,65 @@ export default function VoteScreen() {
     setShowVotantes(prev => !prev);
   };
 
+  const handleShareLink = async () => {
+    if (!encuesta?.link_uuid) return;
+    const link = `https://vhortosecreto-vercel.vercel.app/open/${encuesta.link_uuid}`;
+    try {
+      await Share.share({ message: `${encuesta.titulo}\n\n${link}`, url: link });
+    } catch {}
+  };
+
+  const handleCopyLink = async () => {
+    if (!encuesta?.link_uuid) return;
+    await Clipboard.setStringAsync(`https://vhortosecreto-vercel.vercel.app/open/${encuesta.link_uuid}`);
+    setSuccessMessage(t('copyLink'));
+  };
+
   const fetchVotantesData = async (encuestaData?: Encuesta, haVotadoActual?: boolean, opcionesData?: any[]) => {
     const enc = encuestaData ?? encuesta;
     const hv = haVotadoActual ?? haVotado;
     const ops = opcionesData ?? opciones;
     if (!groupId || !enc) return;
     setVotantesLoading(true);
-    const { data, error } = await supabase
-      .from('encuestas_usuarios')
-      .select('phone_usuario, nick_usuario')
-      .eq('id_encuesta', groupId)
-      .order('nick_usuario', { ascending: true });
-    let list: Votante[] = (data ?? []).map((v) => ({ ...v, avatar_url: null, haVotado: false }));
-    if (!error && enc && !list.some((v) => v.phone_usuario === enc.owner)) {
-      list = [{ phone_usuario: enc.owner, nick_usuario: enc.owner_nick, avatar_url: null, haVotado: false }, ...list];
-    }
 
-    const isVotadasCase = hv && !enc?.finalizada;
-    if (isVotadasCase) {
-      const { data: haVotadoData } = await supabase
-        .from('encuestas_ha_votado')
-        .select('user_id')
-        .eq('id_encuesta', groupId);
-      const userIds = haVotadoData?.map(v => v.user_id) ?? [];
-      if (userIds.length > 0) {
-        const { data: voterProfiles } = await supabase
+    let list: Votante[] = [];
+
+    if (enc.abierta) {
+      const { data: votedPhonesData } = await supabase
+        .rpc('get_encuesta_votantes', { p_id_encuesta: groupId });
+      const votedPhones = (votedPhonesData as { phone: string }[] | null) ?? [];
+      if (votedPhones.length > 0) {
+        const phoneSet = new Set(votedPhones.map(v => v.phone));
+        const { data: profiles } = await supabase
           .from('profiles')
-          .select('phone')
-          .in('id', userIds);
-        const votedPhones = new Set(voterProfiles?.map(p => p.phone) ?? []);
-        list = list.map(v => ({ ...v, haVotado: votedPhones.has(v.phone_usuario) }));
+          .select('phone, nick, avatar_url')
+          .in('phone', Array.from(phoneSet));
+        list = (profiles ?? []).map(p => ({
+          phone_usuario: p.phone,
+          nick_usuario: p.nick,
+          avatar_url: p.avatar_url,
+          haVotado: true,
+        }));
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('encuestas_usuarios')
+        .select('phone_usuario, nick_usuario')
+        .eq('id_encuesta', groupId)
+        .order('nick_usuario', { ascending: true });
+      list = (data ?? []).map((v) => ({ ...v, avatar_url: null, haVotado: false }));
+      if (!error && enc && !list.some((v) => v.phone_usuario === enc.owner)) {
+        list = [{ phone_usuario: enc.owner, nick_usuario: enc.owner_nick, avatar_url: null, haVotado: false }, ...list];
+      }
+
+      const shouldShowVoters = hv || enc?.finalizada;
+      if (shouldShowVoters) {
+        const { data: votedPhonesData } = await supabase
+          .rpc('get_encuesta_votantes', { p_id_encuesta: groupId });
+        const votedPhones = new Set((votedPhonesData as { phone: string }[] | null)?.map(v => v.phone) ?? []);
+        if (votedPhones.size > 0) {
+          list = list.map(v => ({ ...v, haVotado: votedPhones.has(v.phone_usuario) }));
+        }
       }
     }
 
@@ -298,11 +361,11 @@ export default function VoteScreen() {
           if (!groupId) return;
           try {
             await supabase.from('encuestas').update({ reportada: true }).eq('id', groupId);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              await supabase.from('encuestas_reportes').insert({ id_encuesta: groupId, user_id: user.id });
-              await supabase.from('encuestas_eliminadas').insert({ id_encuesta: groupId, user_id: user.id });
-              supabase.functions.invoke('send-report-email', { body: { encuesta_id: groupId, reported_by_user_id: user.id } }).catch(() => {});
+            const userId = await getUserId();
+            if (userId) {
+              await supabase.from('encuestas_reportes').insert({ id_encuesta: groupId, user_id: userId });
+              await supabase.from('encuestas_eliminadas').insert({ id_encuesta: groupId, user_id: userId });
+              supabase.functions.invoke('send-report-email', { body: { encuesta_id: groupId, reported_by_user_id: userId } }).catch(() => {});
             }
             const cached = await loadCache();
             if (cached) {
@@ -387,9 +450,23 @@ export default function VoteScreen() {
         </View>
 
         <Text style={styles.meta}>
-          {t('createdBy')} {encuesta.owner_nick} · {encuesta.votantes} {t('voters')}{encuesta.votantes !== 1 ? 's' : ''}
+          {t('createdBy')} {encuesta.owner_nick} · {encuesta.abierta ? `${encuesta.personas_votadas} ${t('voters')}${encuesta.personas_votadas !== 1 ? 's' : ''}` : `${encuesta.votantes} ${t('voters')}${encuesta.votantes !== 1 ? 's' : ''}`}
           {encuesta.multiopcion ? ` · ${t('multioption')}` : ''}
+          {encuesta.abierta ? ` · ${t('openSurvey')}` : ''}
         </Text>
+
+        {encuesta.abierta && encuesta.link_uuid && (
+          <View style={styles.shareLinkRow}>
+            <Pressable style={styles.shareLinkBtn} onPress={handleCopyLink}>
+              <MaterialIcons name="content-copy" size={16} color="#1F6FEB" />
+              <Text style={styles.shareLinkBtnText}>{t('copyLink')}</Text>
+            </Pressable>
+            <Pressable style={styles.shareLinkBtn} onPress={handleShareLink}>
+              <MaterialIcons name="share" size={16} color="#1F6FEB" />
+              <Text style={styles.shareLinkBtnText}>{t('share')}</Text>
+            </Pressable>
+          </View>
+        )}
 
           <Pressable style={styles.votantesToggle} onPress={toggleVotantes}>
             <Text style={styles.votantesToggleText}>
@@ -404,7 +481,7 @@ export default function VoteScreen() {
               <Text style={styles.votantesLoading}>{t('loadingParticipants')}</Text>
             ) : votantes.length === 0 ? (
               <Text style={styles.votantesEmpty}>{t('noParticipants')}</Text>
-            ) : hasVoted && !encuesta.finalizada ? (
+            ) : !encuesta.abierta && hasVoted && !encuesta.finalizada ? (
               <>
                 <Text style={styles.votantesSectionTitle}>{t('pendingVoters')}</Text>
                 {votantes.filter((v) => !v.haVotado).length === 0 ? (
@@ -466,6 +543,12 @@ export default function VoteScreen() {
               style={[styles.encuestaImage, encuestaImageSize && { aspectRatio: encuestaImageSize.width / encuestaImageSize.height }]}
               contentFit="contain"
             />
+          )}
+          {imageError && (
+            <View style={styles.imageErrorContainer}>
+              <MaterialIcons name="image-not-supported" size={32} color="#999" />
+              <Text style={styles.imageErrorText}>{t('imageNotAvailable')}</Text>
+            </View>
           )}
 
         {encuesta.finalizada && (
@@ -587,7 +670,21 @@ export default function VoteScreen() {
                   onPress: async () => {
                     if (!groupId) return;
                     const { error } = await supabase.rpc('salir_encuesta', { p_id_encuesta: groupId });
-                    if (error) { setErrorMessage(error.message); return; }
+                    if (error) {
+                      const isNetwork = !error.code || error.message?.includes('fetch') || error.message?.includes('network');
+                      if (isNetwork) {
+                        await addToQueue({ type: 'salir_encuesta', data: { groupId } });
+                        const cached = await loadCache();
+                        if (cached) {
+                          cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
+                          await saveCache(cached);
+                        }
+                        router.replace('/groups');
+                        return;
+                      }
+                      setErrorMessage(error.message);
+                      return;
+                    }
                     const cached = await loadCache();
                     if (cached) {
                       cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
@@ -647,13 +744,24 @@ export default function VoteScreen() {
                       .select('r2_key')
                       .eq('id_encuesta', groupId)
                       .maybeSingle();
-                    if (imgData?.r2_key) {
-                      deleteEncuestaImageCache(imgData.r2_key).catch(() => {});
-                      supabase.functions.invoke('r2-delete', { body: { key: imgData.r2_key } }).catch(() => {});
+                    const r2Key = imgData?.r2_key;
+                    console.log('[delete] r2Key found:', !!r2Key);
+                    const { error: rpcError } = await supabase.rpc('eliminar_encuesta_finalizada', { p_id_encuesta: groupId });
+                    console.log('[delete] rpcError:', rpcError?.message);
+                    if (!rpcError && r2Key) {
+                      const { data: stillExists } = await supabase
+                        .from('encuestas')
+                        .select('id')
+                        .eq('id', groupId)
+                        .maybeSingle();
+                      console.log('[delete] encuesta still exists:', !!stillExists);
+                      if (!stillExists) {
+                        console.log('[delete] deleting R2 image');
+                        deleteEncuestaImageCache(r2Key).catch(() => {});
+                        supabase.functions.invoke('r2-delete', { body: { key: r2Key } }).catch(() => {});
+                      }
                     }
-                    const { error } = await supabase.rpc('eliminar_encuesta_finalizada', { p_id_encuesta: groupId });
                     setIsDeleting(false);
-                    if (error) { setErrorMessage(error.message); return; }
                     const cached = await loadCache();
                     if (cached) {
                       cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
@@ -695,9 +803,9 @@ export default function VoteScreen() {
                       }
                       await supabase.from('encuestas').delete().eq('id', groupId);
                     } else {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (user) {
-                        await supabase.from('encuestas_eliminadas').insert({ id_encuesta: groupId, user_id: user.id });
+                      const userId = await getUserId();
+                      if (userId) {
+                        await supabase.from('encuestas_eliminadas').insert({ id_encuesta: groupId, user_id: userId });
                       }
                     }
                     setIsDeleting(false);
@@ -941,6 +1049,26 @@ const styles = StyleSheet.create({
     color: '#C62828',
     fontSize: 16,
   },
+  shareLinkRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  shareLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#1F6FEB',
+    borderRadius: 10,
+  },
+  shareLinkBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F6FEB',
+  },
   votantesToggle: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1103,6 +1231,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 12,
     minHeight: 120,
+  },
+  imageErrorContainer: {
+    width: '100%',
+    minHeight: 120,
+    borderRadius: 10,
+    marginBottom: 12,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  imageErrorText: {
+    fontSize: 13,
+    color: '#999',
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
   reportButton: {
     marginTop: 32,

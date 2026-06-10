@@ -21,6 +21,8 @@ import { savePushToken } from '@/lib/notifications';
 import { uploadAvatarFromUri } from '@/lib/uploadAvatar';
 import { countries, findCountryByDial, type Country } from '@/lib/countries';
 import { useT } from '@/lib/i18n';
+import { getUserId, getProfileWithCache } from '@/lib/offline';
+import { loadCache } from '@/lib/encuestasCache';
 
 export default function CompleteProfileScreen() {
   const { t } = useT();
@@ -42,25 +44,36 @@ export default function CompleteProfileScreen() {
   useEffect(() => {
     const load = async () => {
       setErrorMessage('');
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      const cached = await loadCache();
+      if (cached?.profile && isProfileComplete(cached.profile)) {
+        router.replace('/groups');
+        return;
+      }
+
+      const userId = await getUserId();
+      if (!userId) {
         setIsLoading(false);
         router.replace('/');
         return;
       }
 
-      setEmail(user.email ?? '');
+      const profile = await getProfileWithCache(userId);
+      if (profile && isProfileComplete(profile)) {
+        router.replace('/groups');
+        return;
+      }
 
       try {
-        const profile = await fetchProfile(user.id);
-        if (profile && isProfileComplete(profile)) {
-          router.replace('/groups');
-          return;
-        }
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        if (user) setEmail(user.email ?? '');
+      } catch {}
+
+      try {
+        const profile = await fetchProfile(userId);
         if (profile) {
           const storedPhone = profile.phone ?? '';
           const country = findCountryByDial(storedPhone);
@@ -312,6 +325,8 @@ export default function CompleteProfileScreen() {
                 </Text>
                 .
               </Text>
+              <Text style={styles.contentPolicyTitle}>{t('contentPolicyTitle')}</Text>
+              <Text style={styles.contentPolicyBody}>{t('contentPolicyBody')}</Text>
             </View>
           )}
         </View>
@@ -655,6 +670,19 @@ const styles = StyleSheet.create({
   termsLink: {
     color: '#1F6FEB',
     textDecorationLine: 'underline',
+  },
+  contentPolicyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 16,
+    lineHeight: 20,
+  },
+  contentPolicyBody: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 20,
+    marginTop: 8,
   },
   privacyModalOverlay: {
     flex: 1,

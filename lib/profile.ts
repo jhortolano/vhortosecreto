@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { loadCache } from '@/lib/encuestasCache';
 
 export type Profile = {
   id: string;
@@ -31,6 +32,8 @@ export async function routeAfterAuth(userId: string): Promise<'complete-profile'
     const profile = await fetchProfile(userId);
     return isProfileComplete(profile) ? 'groups' : 'complete-profile';
   } catch {
+    const cached = await loadCache();
+    if (cached?.profile && isProfileComplete(cached.profile)) return 'groups';
     return 'complete-profile';
   }
 }

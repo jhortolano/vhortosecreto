@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +8,9 @@ import { checkVersion } from '@/lib/versionCheck';
 import { setupNotificationListeners, savePushToken } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
+import { processQueue } from '@/lib/offlineQueue';
+import { MobileAds } from 'react-native-google-mobile-ads';
+import UpdateRequiredScreen from '@/app/update-required';
 import 'react-native-reanimated';
 
 function BackToHome() {
@@ -24,17 +27,26 @@ const backToHomeOptions = {
 
 export default function RootLayout() {
   const { t } = useT();
+  const [versionBlocked, setVersionBlocked] = useState(false);
 
   useEffect(() => {
     console.log('[LAYOUT] RootLayout mounted');
     setupNotificationListeners();
     checkVersion().then((status) => {
-      if (status === 'update_required') router.replace('/update-required');
+      if (status === 'update_required') {
+        setVersionBlocked(true);
+      }
     });
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) savePushToken(user.id);
-    });
+      if (user) savePushToken(user.id).catch(() => {});
+    }).catch(() => {});
+    MobileAds().initialize().catch(() => {});
+    void processQueue();
   }, []);
+
+  if (versionBlocked) {
+    return <UpdateRequiredScreen />;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -50,6 +62,7 @@ export default function RootLayout() {
         <Stack.Screen name="grupo/[id]" options={{ title: t('groups'), ...backToHomeOptions }} />
         <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
         <Stack.Screen name="update-required" options={{ headerShown: false }} />
+        <Stack.Screen name="open/[linkUuid]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
       </CreateEncuestaProvider>

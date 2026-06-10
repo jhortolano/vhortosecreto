@@ -17,6 +17,11 @@ create table if not exists public.encuestas (
 -- añadir columna finalizada_at si no existe (para tablas ya creadas)
 alter table public.encuestas add column if not exists finalizada_at timestamptz;
 
+-- columnas para encuestas abiertas (compartibles por link)
+alter table public.encuestas add column if not exists abierta boolean not null default false;
+alter table public.encuestas add column if not exists link_uuid text;
+create unique index if not exists encuestas_link_uuid_idx on public.encuestas (link_uuid) where link_uuid is not null;
+
 create table if not exists public.encuestas_opciones (
   id uuid primary key default gen_random_uuid(),
   id_encuesta uuid not null references public.encuestas(id) on delete cascade,
@@ -55,6 +60,11 @@ as $$
         or exists (
           select 1 from public.encuestas_usuarios eu
           where eu.id_encuesta = e.id and eu.phone_usuario = p_phone
+        )
+        or exists (
+          select 1 from public.encuestas_ha_votado hv
+          join public.profiles pr on pr.id = hv.user_id
+          where hv.id_encuesta = e.id and pr.phone = p_phone
         )
       )
   );
@@ -111,7 +121,9 @@ create or replace function public.create_encuesta_bundle(
   p_opciones text[],
   p_phones_participantes text[],
   p_imagen_key text default null,
-  p_imagen_url text default null
+  p_imagen_url text default null,
+  p_abierta boolean default false,
+  p_link_uuid text default null
 )
 returns uuid
 language plpgsql
@@ -163,59 +175,80 @@ begin
     raise exception 'min_dos_opciones';
   end if;
 
-  v_phones := array(
-    select distinct trim(x)
-    from unnest(coalesce(p_phones_participantes, array[]::text[])) as x
-    where trim(coalesce(x, '')) <> ''
-  );
+  if coalesce(p_abierta, false) then
+    -- Encuesta abierta: no necesita participantes
+    v_votantes := 1;
 
-  -- Si el participante no tiene prefijo (+), se le añade el del creador
-  if cardinality(v_phones) > 0 then
-    for i in 1..cardinality(v_phones) loop
-      if v_phones[i] not like '+%' then
-        v_phones[i] := left(v_owner, length(v_owner) - length(v_phones[i])) || v_phones[i];
-      end if;
+    insert into public.encuestas (
+      titulo, owner, owner_nick, finalizada, votantes, multiopcion, personas_a_votar,
+      personas_votadas, abierta, link_uuid
+    )
+    values (
+      trim(p_titulo),
+      v_owner,
+      v_owner_nick,
+      false,
+      v_votantes,
+      coalesce(p_multiopcion, false),
+      1,
+      0,
+      true,
+      coalesce(p_link_uuid, gen_random_uuid()::text)
+    )
+    returning id into v_uid;
+  else
+    v_phones := array(
+      select distinct trim(x)
+      from unnest(coalesce(p_phones_participantes, array[]::text[])) as x
+      where trim(coalesce(x, '')) <> ''
+    );
+
+    if cardinality(v_phones) > 0 then
+      for i in 1..cardinality(v_phones) loop
+        if v_phones[i] not like '+%' then
+          v_phones[i] := left(v_owner, length(v_owner) - length(v_phones[i])) || v_phones[i];
+        end if;
+      end loop;
+    end if;
+
+    v_phones := array(
+      select distinct x
+      from unnest(v_phones) as x
+      where x is distinct from v_owner
+    );
+
+    v_n_parts := coalesce(cardinality(v_phones), 0);
+    v_votantes := v_n_parts + 1;
+
+    insert into public.encuestas (
+      titulo, owner, owner_nick, finalizada, votantes, multiopcion, personas_a_votar, personas_votadas
+    )
+    values (
+      trim(p_titulo),
+      v_owner,
+      v_owner_nick,
+      false,
+      v_votantes,
+      coalesce(p_multiopcion, false),
+      v_votantes,
+      0
+    )
+    returning id into v_uid;
+
+    foreach p_phone in array v_phones loop
+      select pr.nick into v_nick
+      from public.profiles pr
+      where pr.phone = p_phone
+      limit 1;
+
+      insert into public.encuestas_usuarios (id_encuesta, phone_usuario, nick_usuario)
+      values (v_uid, p_phone, v_nick);
     end loop;
   end if;
-
-  -- Eliminar duplicados y quitar al creador de la lista de participantes
-  v_phones := array(
-    select distinct x
-    from unnest(v_phones) as x
-    where x is distinct from v_owner
-  );
-
-  v_n_parts := coalesce(cardinality(v_phones), 0);
-  v_votantes := v_n_parts + 1;
-
-  insert into public.encuestas (
-    titulo, owner, owner_nick, finalizada, votantes, multiopcion, personas_a_votar, personas_votadas
-  )
-  values (
-    trim(p_titulo),
-    v_owner,
-    v_owner_nick,
-    false,
-    v_votantes,
-    coalesce(p_multiopcion, false),
-    v_votantes,
-    0
-  )
-  returning id into v_uid;
 
   for i in 1..v_n_ops loop
     insert into public.encuestas_opciones (id_encuesta, opcion_texto, total_votos)
     values (v_uid, v_opciones[i], 0);
-  end loop;
-
-  foreach p_phone in array v_phones loop
-    select pr.nick into v_nick
-    from public.profiles pr
-    where pr.phone = p_phone
-    limit 1;
-
-    insert into public.encuestas_usuarios (id_encuesta, phone_usuario, nick_usuario)
-    values (v_uid, p_phone, v_nick);
   end loop;
 
   if p_imagen_key is not null and p_imagen_url is not null then
@@ -227,7 +260,7 @@ begin
 end;
 $$;
 
-grant execute on function public.create_encuesta_bundle(text, boolean, text[], text[], text, text) to authenticated;
+grant execute on function public.create_encuesta_bundle(text, boolean, text[], text[], text, text, boolean, text) to authenticated;
 
 -- ============================================================
 -- Votos anónimos (sin user_id) + control de quién ha votado
@@ -241,6 +274,18 @@ create table if not exists public.encuestas_votos (
   opcion_id uuid not null references public.encuestas_opciones(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+alter table public.encuestas_votos enable row level security;
+
+-- Los inserts en encuestas_votos se hacen via RPC votar_encuesta (security definer)
+-- No se necesita policy de INSERT/UPDATE/DELETE
+-- Policy de SELECT solo para usuarios autenticados (lectura agregada via opciones)
+drop policy if exists "encuestas_votos_select_authenticated" on public.encuestas_votos;
+create policy "encuestas_votos_select_authenticated"
+on public.encuestas_votos
+for select
+to authenticated
+using (true);
 
 create table if not exists public.encuestas_ha_votado (
   id_encuesta uuid not null references public.encuestas(id) on delete cascade,
@@ -273,7 +318,9 @@ declare
   v_multiopcion boolean;
   v_phone text;
   v_encuesta_finalizada boolean;
+  v_encuesta_abierta boolean;
   v_already_voted boolean;
+  v_personas_a_votar int;
 begin
   if auth.uid() is null then
     raise exception 'not_authenticated';
@@ -287,8 +334,8 @@ begin
     raise exception 'profile_incomplete';
   end if;
 
-  select e.owner, e.multiopcion, e.finalizada
-  into v_owner, v_multiopcion, v_encuesta_finalizada
+  select e.owner, e.multiopcion, e.finalizada, e.abierta, e.personas_a_votar
+  into v_owner, v_multiopcion, v_encuesta_finalizada, v_encuesta_abierta, v_personas_a_votar
   from public.encuestas e
   where e.id = p_id_encuesta;
 
@@ -300,11 +347,14 @@ begin
     raise exception 'encuesta_finalizada';
   end if;
 
-  if v_owner <> v_phone and not exists (
-    select 1 from public.encuestas_usuarios eu
-    where eu.id_encuesta = p_id_encuesta and eu.phone_usuario = v_phone
-  ) then
-    raise exception 'no_autorizado';
+  -- Para encuestas abiertas, cualquier usuario autenticado puede votar
+  if not coalesce(v_encuesta_abierta, false) then
+    if v_owner <> v_phone and not exists (
+      select 1 from public.encuestas_usuarios eu
+      where eu.id_encuesta = p_id_encuesta and eu.phone_usuario = v_phone
+    ) then
+      raise exception 'no_autorizado';
+    end if;
   end if;
 
   if not v_multiopcion and coalesce(cardinality(p_opcion_ids), 0) > 1 then
@@ -340,17 +390,105 @@ begin
     values (p_id_encuesta, auth.uid())
     on conflict do nothing;
 
-    update public.encuestas
-    set
-      personas_votadas = personas_votadas + 1,
-      finalizada = case when personas_votadas + 1 >= personas_a_votar then true else finalizada end,
-      finalizada_at = case when personas_votadas + 1 >= personas_a_votar then now() else finalizada_at end
-    where id = p_id_encuesta and personas_votadas < personas_a_votar;
+    if coalesce(v_encuesta_abierta, false) then
+      -- Encuesta abierta: no hay límite de votantes, no se actualiza contador
+      null;
+    else
+      update public.encuestas
+      set
+        personas_votadas = personas_votadas + 1,
+        finalizada = case when personas_votadas + 1 >= personas_a_votar then true else finalizada end,
+        finalizada_at = case when personas_votadas + 1 >= personas_a_votar then now() else finalizada_at end
+      where id = p_id_encuesta and personas_votadas < personas_a_votar;
+    end if;
   end if;
 end;
 $$;
 
 grant execute on function public.votar_encuesta(uuid, uuid[]) to authenticated;
+
+-- RPC: obtener teléfonos de usuarios que han votado (bypass RLS)
+-- Join con profiles dentro del RPC security definer para evitar RLS en profiles también
+drop function if exists public.get_encuesta_votantes(uuid);
+
+create function public.get_encuesta_votantes(
+  p_id_encuesta uuid
+)
+returns table (phone text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select pr.phone
+  from public.encuestas_ha_votado hv
+  join public.profiles pr on pr.id = hv.user_id
+  where hv.id_encuesta = p_id_encuesta
+    and pr.phone is not null;
+end;
+$$;
+
+grant execute on function public.get_encuesta_votantes(uuid) to authenticated;
+
+-- RPC: obtener encuesta por link_uuid (bypass RLS para encuestas abiertas)
+create or replace function public.get_encuesta_by_link(p_link_uuid text)
+returns table (
+  id uuid,
+  titulo text,
+  owner text,
+  owner_nick text,
+  finalizada boolean,
+  multiopcion boolean,
+  abierta boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select e.id, e.titulo, e.owner, e.owner_nick, e.finalizada, e.multiopcion, e.abierta
+  from public.encuestas e
+  where e.link_uuid = p_link_uuid and e.abierta = true;
+end;
+$$;
+
+grant execute on function public.get_encuesta_by_link(text) to authenticated;
+
+-- RPC: obtener opciones de encuesta (bypass RLS para encuestas abiertas)
+create or replace function public.get_encuesta_opciones(p_id_encuesta uuid)
+returns table (id uuid, opcion_texto text, total_votos int)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select o.id, o.opcion_texto, o.total_votos
+  from public.encuestas_opciones o
+  where o.id_encuesta = p_id_encuesta;
+end;
+$$;
+
+grant execute on function public.get_encuesta_opciones(uuid) to authenticated;
+
+-- RPC: obtener imagen de encuesta (bypass RLS para encuestas abiertas)
+create or replace function public.get_encuesta_imagen(p_id_encuesta uuid)
+returns table (r2_key text, r2_url text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select i.r2_key, i.r2_url
+  from public.encuesta_imagenes i
+  where i.id_encuesta = p_id_encuesta;
+end;
+$$;
+
+grant execute on function public.get_encuesta_imagen(uuid) to authenticated;
 
 -- ============================================================
 -- Realtime: permitir que los clientes se suscriban a cambios
@@ -492,26 +630,46 @@ grant execute on function public.salir_encuesta(uuid) to authenticated;
 
 -- RPC: eliminar encuesta finalizada del dispositivo del usuario
 -- Si todos los participantes la han eliminado, se borra definitivamente
+-- Returns true si la encuesta fue borrada definitivamente, false si solo soft-delete
 create or replace function public.eliminar_encuesta_finalizada(p_id_encuesta uuid)
-returns void
+returns boolean
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   v_finalizada boolean;
-  v_total_votantes int;
+  v_abierta boolean;
+  v_total_posibles int;
   v_eliminados int;
+  v_deleted boolean := false;
 begin
   if auth.uid() is null then
     raise exception 'not_authenticated';
   end if;
 
-  select finalizada, votantes into v_finalizada, v_total_votantes
+  select finalizada, abierta into v_finalizada, v_abierta
   from public.encuestas where id = p_id_encuesta;
 
   if not v_finalizada then
     raise exception 'no_finalizada';
+  end if;
+
+  if v_abierta then
+    select count(*) into v_total_posibles
+    from (
+      select p.id as user_id
+      from public.encuestas e
+      join public.profiles p on p.phone = e.owner
+      where e.id = p_id_encuesta
+      union
+      select hv.user_id
+      from public.encuestas_ha_votado hv
+      where hv.id_encuesta = p_id_encuesta
+    ) t;
+  else
+    select votantes into v_total_posibles
+    from public.encuestas where id = p_id_encuesta;
   end if;
 
   insert into public.encuestas_eliminadas (id_encuesta, user_id)
@@ -522,9 +680,14 @@ begin
   from public.encuestas_eliminadas
   where id_encuesta = p_id_encuesta;
 
-  if v_eliminados >= v_total_votantes then
+  if v_eliminados >= v_total_posibles then
     delete from public.encuestas where id = p_id_encuesta;
+    if found then
+      v_deleted := true;
+    end if;
   end if;
+
+  return v_deleted;
 end;
 $$;
 
@@ -714,6 +877,20 @@ create table if not exists public.app_config (
   value text not null
 );
 
+-- app_config necesita RLS para proteger escritura, pero debe ser legible por cualquiera
+-- (incluso antes del login) para que checkVersion() funcione.
+alter table public.app_config enable row level security;
+
+-- Policy de SELECT pública: cualquiera puede leer (anon key incluido)
+drop policy if exists "app_config_select_public" on public.app_config;
+create policy "app_config_select_public"
+on public.app_config
+for select
+to anon, authenticated
+using (true);
+
+-- Escrituras solo via service_role (admin panel) - no se necesita policy de INSERT/UPDATE/DELETE
+
 insert into public.app_config (key, value) values ('min_version', '1.0.0')
 on conflict (key) do nothing;
 
@@ -799,8 +976,8 @@ begin
   set
     finalizada = true,
     finalizada_at = now(),
-    votantes = personas_votadas,
-    personas_a_votar = personas_votadas
+    votantes = greatest(personas_votadas, 1),
+    personas_a_votar = greatest(personas_votadas, 1)
   where id = p_id_encuesta and not finalizada;
 end;
 $$;

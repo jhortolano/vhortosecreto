@@ -1,5 +1,35 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { S3Client, DeleteObjectCommand } from 'https://esm.sh/@aws-sdk/client-s3@3';
+
+const R2_ACCOUNT_ID = Deno.env.get('R2_ACCOUNT_ID');
+const R2_ACCESS_KEY_ID = Deno.env.get('R2_ACCESS_KEY_ID');
+const R2_SECRET_ACCESS_KEY = Deno.env.get('R2_SECRET_ACCESS_KEY');
+const R2_BUCKET_NAME = Deno.env.get('R2_BUCKET_NAME');
+
+const S3 = R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME
+  ? new S3Client({
+      region: 'auto',
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+      },
+    })
+  : null;
+
+async function deleteFromR2(key: string) {
+  if (!S3) {
+    console.error('R2 not configured, skipping image delete');
+    return;
+  }
+  try {
+    await S3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
+    console.log('R2 image deleted:', key);
+  } catch (err) {
+    console.error('Error deleting R2 image:', err.message);
+  }
+}
 
 serve(async (req) => {
   const secret = Deno.env.get('REPORT_DELETE_SECRET');
@@ -29,9 +59,7 @@ serve(async (req) => {
     .eq('id_encuesta', encuesta_id);
 
   if (images) {
-    for (const img of images) {
-      supabase.functions.invoke('r2-delete', { body: { key: img.r2_key } }).catch(() => {});
-    }
+    await Promise.all(images.map(img => deleteFromR2(img.r2_key)));
   }
 
   const { error } = await supabase.from('encuestas').delete().eq('id', encuesta_id);

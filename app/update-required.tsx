@@ -5,8 +5,8 @@ export default function UpdateRequiredScreen() {
   const { t } = useT();
   const openStore = () => {
     const url = Platform.OS === 'ios'
-      ? 'https://apps.apple.com/app/idYOUR_APP_ID'
-      : 'https://play.google.com/store/apps/details?id=com.anonymous.VhortoSecreto';
+      ? 'https://apps.apple.com/app/id6774578274'
+      : 'https://play.google.com/store/apps/details?id=com.termibululu.vhortosecreto';
     Linking.openURL(url);
   };
 
