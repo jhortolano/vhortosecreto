@@ -1,5 +1,7 @@
 -- Fix: return personas_votadas and votantes from get_encuesta_by_link
-create or replace function public.get_encuesta_by_link(p_link_uuid text)
+drop function if exists public.get_encuesta_by_link(text);
+
+create function public.get_encuesta_by_link(p_link_uuid text)
 returns table (
   id uuid,
   titulo text,
