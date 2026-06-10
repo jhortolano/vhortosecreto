@@ -36,6 +36,7 @@
       <intent-filter android:autoVerify="true" data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
         <data android:scheme="vhortosecreto" android:host="open" android:pathPrefix="/"/>
+        <data android:scheme="https" android:host="vhortosecreto.vercel.app" android:pathPrefix="/open"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>

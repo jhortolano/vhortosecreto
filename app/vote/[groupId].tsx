@@ -271,14 +271,14 @@ export default function VoteScreen() {
     if (!encuesta?.link_uuid) return;
     const link = `https://vhortosecreto.vercel.app/open/${encuesta.link_uuid}`;
     try {
-      await Share.share({ message: `${encuesta.titulo}\n\n${link}`, url: link });
+      await Share.share({ message: `${encuesta.titulo}\n\n${link}` });
     } catch {}
   };
 
   const handleCopyLink = async () => {
     if (!encuesta?.link_uuid) return;
     await Clipboard.setStringAsync(`https://vhortosecreto.vercel.app/open/${encuesta.link_uuid}`);
-    setSuccessMessage(t('copyLink'));
+    setSuccessMessage(t('linkCopied'));
   };
 
   const fetchVotantesData = async (encuestaData?: Encuesta, haVotadoActual?: boolean, opcionesData?: any[]) => {

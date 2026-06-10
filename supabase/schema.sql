@@ -391,8 +391,9 @@ begin
     on conflict do nothing;
 
     if coalesce(v_encuesta_abierta, false) then
-      -- Encuesta abierta: no hay límite de votantes, no se actualiza contador
-      null;
+      update public.encuestas
+      set personas_votadas = personas_votadas + 1
+      where id = p_id_encuesta;
     else
       update public.encuestas
       set
