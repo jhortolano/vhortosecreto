@@ -43,3 +43,6 @@ app-example
 
 # Xcode archives / build artifacts
 build/
+
+# Next.js build artifacts
+.next/

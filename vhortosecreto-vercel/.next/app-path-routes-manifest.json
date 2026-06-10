@@ -1,8 +1,0 @@
-{
-  "/_global-error/page": "/_global-error",
-  "/_not-found/page": "/_not-found",
-  "/api/well-known/apple-app-site-association/route": "/api/well-known/apple-app-site-association",
-  "/api/well-known/assetlinks.json/route": "/api/well-known/assetlinks.json",
-  "/open/[uuid]/page": "/open/[uuid]",
-  "/page": "/"
-}

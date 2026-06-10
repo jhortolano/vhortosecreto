@@ -1,8 +1,0 @@
-{
-  "/_global-error/page": "app/_global-error/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/well-known/apple-app-site-association/route": "app/api/well-known/apple-app-site-association/route.js",
-  "/api/well-known/assetlinks.json/route": "app/api/well-known/assetlinks.json/route.js",
-  "/open/[uuid]/page": "app/open/[uuid]/page.js",
-  "/page": "app/page.js"
-}
