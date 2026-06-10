@@ -238,8 +238,21 @@ export default function VoteScreen() {
       .eq('id', groupId)
       .single();
 
-    if (e?.finalizada) {
+    if (e) {
       setEncuesta(e);
+      setDetailCache(groupId, { encuesta: e, opciones, haVotado: true, votantes: [] });
+
+      const mainCache = await loadCache();
+      if (mainCache) {
+        const idx = mainCache.encuestas.findIndex((x: any) => x.id === groupId);
+        if (idx !== -1) {
+          mainCache.encuestas[idx] = { ...mainCache.encuestas[idx], ...e };
+          await saveCache(mainCache);
+        }
+      }
+    }
+
+    if (e?.finalizada) {
       const userId = await getUserId();
       if (userId) {
         await supabase.from('encuestas_lecturas').upsert(
