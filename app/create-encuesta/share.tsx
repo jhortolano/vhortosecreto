@@ -7,7 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 export default function ShareScreen() {
   const { t } = useT();
   const { linkUuid, titulo } = useLocalSearchParams<{ linkUuid: string; titulo: string }>();
-  const deepLink = `https://vhortosecreto-vercel.vercel.app/open/${linkUuid}`;
+  const deepLink = `https://vhortosecreto.vercel.app/open/${linkUuid}`;
 
   const handleShare = async () => {
     try {

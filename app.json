@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.termibululu.vhortosecreto",
       "buildNumber": "7",
-      "associatedDomains": ["applinks:vhortosecreto-vercel.vercel.app"],
+      "associatedDomains": ["applinks:vhortosecreto.vercel.app"],
       "infoPlist": {
         "CFBundleDisplayName": "Voto Secreto",
         "UIBackgroundModes": ["remote-notification"]
@@ -46,7 +46,7 @@
             },
             {
               "scheme": "https",
-              "host": "vhortosecreto-vercel.vercel.app",
+              "host": "vhortosecreto.vercel.app",
               "pathPrefix": "/open"
             }
           ],
