@@ -40,3 +40,6 @@ yarn-error.*
 app-example
 
 # generated native folders (committed for builds)
+
+# Xcode archives / build artifacts
+build/
