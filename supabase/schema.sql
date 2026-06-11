@@ -289,10 +289,19 @@ using (true);
 
 create table if not exists public.encuestas_ha_votado (
   id_encuesta uuid not null references public.encuestas(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  user_web text default null,
   created_at timestamptz not null default now(),
-  primary key (id_encuesta, user_id)
+  id bigint generated always as identity primary key
 );
+
+create unique index if not exists encuestas_ha_votado_user_unique
+  on public.encuestas_ha_votado (id_encuesta, user_id)
+  where user_id is not null;
+
+create unique index if not exists encuestas_ha_votado_web_unique
+  on public.encuestas_ha_votado (id_encuesta, user_web)
+  where user_web is not null;
 
 alter table public.encuestas_ha_votado enable row level security;
 
@@ -460,6 +469,7 @@ end;
 $$;
 
 grant execute on function public.get_encuesta_by_link(text) to authenticated;
+grant execute on function public.get_encuesta_by_link(text) to anon;
 
 -- RPC: obtener opciones de encuesta (bypass RLS para encuestas abiertas)
 create or replace function public.get_encuesta_opciones(p_id_encuesta uuid)
@@ -477,6 +487,7 @@ end;
 $$;
 
 grant execute on function public.get_encuesta_opciones(uuid) to authenticated;
+grant execute on function public.get_encuesta_opciones(uuid) to anon;
 
 -- RPC: obtener imagen de encuesta (bypass RLS para encuestas abiertas)
 create or replace function public.get_encuesta_imagen(p_id_encuesta uuid)
@@ -494,6 +505,7 @@ end;
 $$;
 
 grant execute on function public.get_encuesta_imagen(uuid) to authenticated;
+grant execute on function public.get_encuesta_imagen(uuid) to anon;
 
 -- ============================================================
 -- Realtime: permitir que los clientes se suscriban a cambios
