@@ -64,7 +64,7 @@ export default function RootLayout() {
         <Stack.Screen name="update-required" options={{ headerShown: false }} />
         <Stack.Screen name="open/[linkUuid]" options={{ headerShown: false }} />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
       </CreateEncuestaProvider>
     </GestureHandlerRootView>
   );

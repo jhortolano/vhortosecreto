@@ -1,13 +1,16 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { useT } from '@/lib/i18n';
-import { Share, StyleSheet, Text, View, Pressable, Platform } from 'react-native';
+import { Share, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Clipboard from 'expo-clipboard';
+import QrDisplay from '@/lib/QrDisplay';
 
 export default function ShareScreen() {
   const { t } = useT();
+  const { width } = useWindowDimensions();
   const { linkUuid, titulo } = useLocalSearchParams<{ linkUuid: string; titulo: string }>();
   const deepLink = `https://vhortosecreto.vercel.app/open/${linkUuid}`;
+  const qrSize = Math.min(width - 80, 240);
 
   const handleShare = async () => {
     try {
@@ -28,15 +31,11 @@ export default function ShareScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconWrap}>
-        <MaterialIcons name="link" size={48} color="#1F6FEB" />
+      <View style={styles.qrWrap}>
+        <QrDisplay value={deepLink} size={qrSize} />
       </View>
       <Text style={styles.title}>{t('surveyCreated')}</Text>
       <Text style={styles.subtitle}>{t('shareLinkHint')}</Text>
-
-      <View style={styles.linkBox}>
-        <Text style={styles.linkText} numberOfLines={2}>{deepLink}</Text>
-      </View>
 
       <Pressable style={styles.copyBtn} onPress={handleCopy}>
         <MaterialIcons name="content-copy" size={18} color="#FFF" />
@@ -63,25 +62,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  iconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#EAF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
+  qrWrap: {
+    padding: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    marginBottom: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   title: { fontSize: 22, fontWeight: '700', color: '#222', marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 24, lineHeight: 22 },
-  linkBox: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    padding: 16,
-    width: '100%',
-    marginBottom: 16,
-  },
-  linkText: { fontSize: 14, color: '#333', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   copyBtn: {
     flexDirection: 'row',
     alignItems: 'center',

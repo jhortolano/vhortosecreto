@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
 import { setDetailCache } from '@/lib/encuestaDetailCache';
+import { ensureImageDownloaded } from '@/lib/encuestaImage';
 
 export default function OpenVoteScreen() {
   const { t } = useT();
@@ -16,10 +17,8 @@ export default function OpenVoteScreen() {
       return;
     }
     (async () => {
-      console.log('[open-vote] Resolving linkUuid:', linkUuid);
       const { data, error: rpcErr } = await supabase
         .rpc('get_encuesta_by_link', { p_link_uuid: linkUuid });
-      console.log('[open-vote] RPC result:', JSON.stringify({ data, error: rpcErr }));
       if (rpcErr || !data || data.length === 0) {
         setError(t('openSurveyLinkInvalid'));
         return;
@@ -34,6 +33,18 @@ export default function OpenVoteScreen() {
       const opciones = (opsResult.data ?? []).map((o: any) => ({ id: o.id, opcion_texto: o.opcion_texto, total_votos: o.total_votos }));
       const haVotado = false;
 
+      let imagenR2Key: string | null = null;
+      let imagenR2Url: string | null = null;
+      let imagenLocalUri: string | null = null;
+      const imgRow = imgResult.data?.[0];
+      if (imgRow) {
+        imagenR2Key = imgRow.r2_key;
+        imagenR2Url = imgRow.r2_url;
+        try {
+          imagenLocalUri = await ensureImageDownloaded(imgRow.r2_key, imgRow.r2_url);
+        } catch {}
+      }
+
       await setDetailCache(enc.id, {
         encuesta: {
           id: enc.id,
@@ -46,6 +57,9 @@ export default function OpenVoteScreen() {
           personas_votadas: enc.personas_votadas ?? 0,
           abierta: true,
           link_uuid: linkUuid,
+          imagenLocalUri,
+          imagenR2Key,
+          imagenR2Url,
         },
         opciones,
         haVotado,

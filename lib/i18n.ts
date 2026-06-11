@@ -221,6 +221,10 @@ const translations: Record<Lang, Record<string, string>> = {
     openSurveyLinkInvalid: 'Enlace inválido o expirado',
     openSurveyLoadError: 'Error al cargar la encuesta',
     share: 'Compartir',
+    privacyScope: 'Privacidad y Alcance',
+    privateOption: 'Privada',
+    openOption: 'Abierta',
+    showQr: 'Mostrar QR',
   },
   en: {
     appName: 'Secret Poll',
@@ -440,6 +444,10 @@ const translations: Record<Lang, Record<string, string>> = {
     openSurveyLinkInvalid: 'Invalid or expired link',
     openSurveyLoadError: 'Error loading survey',
     share: 'Share',
+    privacyScope: 'Privacy & Scope',
+    privateOption: 'Private',
+    openOption: 'Open',
+    showQr: 'Show QR',
   },
   it: {
     appName: 'Sondaggio Segreto',
@@ -659,6 +667,10 @@ const translations: Record<Lang, Record<string, string>> = {
     openSurveyLinkInvalid: 'Link non valido o scaduto',
     openSurveyLoadError: 'Errore nel caricamento del sondaggio',
     share: 'Condividi',
+    privacyScope: 'Privacy e Portata',
+    privateOption: 'Privata',
+    openOption: 'Aperta',
+    showQr: 'Mostra QR',
   },
   fr: {
     appName: 'Sondage Secret',
@@ -878,6 +890,10 @@ const translations: Record<Lang, Record<string, string>> = {
     openSurveyLinkInvalid: 'Lien invalide ou expiré',
     openSurveyLoadError: 'Erreur lors du chargement du sondage',
     share: 'Partager',
+    privacyScope: 'Confidentialité et Portée',
+    privateOption: 'Privée',
+    openOption: 'Ouverte',
+    showQr: 'Afficher QR',
   },
   de: {
     appName: 'Geheime Umfrage',
@@ -1097,6 +1113,10 @@ const translations: Record<Lang, Record<string, string>> = {
     openSurveyLinkInvalid: 'Ungültiger oder abgelaufener Link',
     openSurveyLoadError: 'Fehler beim Laden der Umfrage',
     share: 'Teilen',
+    privacyScope: 'Datenschutz & Reichweite',
+    privateOption: 'Privat',
+    openOption: 'Offen',
+    showQr: 'QR anzeigen',
   },
 };
 

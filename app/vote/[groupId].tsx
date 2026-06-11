@@ -323,6 +323,12 @@ export default function VoteScreen() {
     setSuccessMessage(t('linkCopied'));
   };
 
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => setSuccessMessage(''), 2500);
+    return () => clearTimeout(timer);
+  }, [successMessage]);
+
   const fetchVotantesData = async (encuestaData?: Encuesta, haVotadoActual?: boolean, opcionesData?: any[]) => {
     const enc = encuestaData ?? encuesta;
     const hv = haVotadoActual ?? haVotado;
@@ -882,10 +888,18 @@ export default function VoteScreen() {
           <Text style={styles.reportButtonText}>{t('reportPoll')}</Text>
         </Pressable>
 
-        {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
         {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
       </View>
     </ScrollView>
+
+      {!!successMessage && (
+        <View style={styles.toastOverlay}>
+          <View style={styles.toastBox}>
+            <MaterialIcons name="check-circle" size={24} color="#0F8A3E" />
+            <Text style={styles.toastText}>{successMessage}</Text>
+          </View>
+        </View>
+      )}
 
       <Modal visible={!!expandedAvatar} transparent animationType="fade" onRequestClose={() => setExpandedAvatar(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setExpandedAvatar(null)}>
@@ -1097,11 +1111,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  successText: {
-    marginTop: 14,
-    color: '#0F8A3E',
+  toastOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    pointerEvents: 'none',
+  },
+  toastBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1B5E20',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  toastText: {
+    color: '#FFF',
     fontWeight: '600',
-    textAlign: 'center',
+    fontSize: 16,
   },
   errorText: {
     marginTop: 12,

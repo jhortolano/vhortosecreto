@@ -9,8 +9,9 @@ import { resizeImage, imageUriToBase64 } from '@/lib/imageResize';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { checkOnline } from '@/lib/offline';
 import { randomUUID } from 'expo-crypto';
@@ -42,8 +43,9 @@ export default function CreateEncuestaFormScreen() {
   const [saving, setSaving] = useState(false);
   const [adLoading, setAdLoading] = useState(false);
   const [error, setError] = useState('');
-  const [imageKey, setImageKey] = useState<string | null>(formData.imagenKey);
-  const [imageUrl, setImageUrl] = useState<string | null>(formData.imagenUrl);
+  const imageKeyRef = useRef<string | null>(formData.imagenKey);
+  const imageUrlRef = useRef<string | null>(formData.imagenUrl);
+  const [privacyMode, setPrivacyMode] = useState<'private' | 'open'>('private');
 
   const addOption = () => {
     if (opciones.length >= MAX_OPTIONS) return;
@@ -85,13 +87,13 @@ export default function CreateEncuestaFormScreen() {
 
   const removeImage = () => {
     setSelectedImageUri(null);
-    setImageKey(null);
-    setImageUrl(null);
+    imageKeyRef.current = null;
+    imageUrlRef.current = null;
   };
 
-  const uploadImageIfNeeded = async (): Promise<boolean> => {
-    if (!selectedImageUri) return true;
-    if (imageKey && imageUrl) return true;
+  const uploadImageIfNeeded = async (): Promise<{ key: string | null; url: string | null } | null> => {
+    if (!selectedImageUri) return { key: null, url: null };
+    if (imageKeyRef.current && imageUrlRef.current) return { key: imageKeyRef.current, url: imageUrlRef.current };
     setUploadingImage(true);
     try {
       const resized = await resizeImage(selectedImageUri);
@@ -104,7 +106,7 @@ export default function CreateEncuestaFormScreen() {
       if (uploadError) {
         setError(`Error al subir la imagen: ${uploadError.message}`);
         setUploadingImage(false);
-        return false;
+        return null;
       }
       if (typeof uploadResult === 'string') {
         try { uploadResult = JSON.parse(uploadResult); } catch {}
@@ -112,17 +114,18 @@ export default function CreateEncuestaFormScreen() {
       if (!uploadResult?.key || !uploadResult?.url) {
         setError('Respuesta inválida del servidor de imágenes.');
         setUploadingImage(false);
-        return false;
+        return null;
       }
-      setImageKey(uploadResult.key);
-      setImageUrl(uploadResult.url);
+      imageKeyRef.current = uploadResult.key;
+      imageUrlRef.current = uploadResult.url;
+      return { key: uploadResult.key, url: uploadResult.url };
     } catch {
       setError('La imagen no se pudo subir por un problema temporal.');
       setUploadingImage(false);
-      return false;
+      return null;
     }
     setUploadingImage(false);
-    return true;
+    return null;
   };
 
   const validate = (): string | null => {
@@ -143,15 +146,15 @@ export default function CreateEncuestaFormScreen() {
     setError('');
     const err = validate();
     if (err) { setError(err); return; }
-    const ok = await uploadImageIfNeeded();
-    if (!ok) return;
+    const imgRes = await uploadImageIfNeeded();
+    if (imgRes === null) return;
     const tit = titulo.trim();
     setFormData({
       titulo,
       opciones: opciones.map((x) => x.trim()),
       multiopcion,
-      imagenKey: imageKey,
-      imagenUrl: imageUrl,
+      imagenKey: imgRes.key,
+      imagenUrl: imgRes.url,
       skipContacts: false,
     });
     router.push('/create-encuesta/contacts' as any);
@@ -165,8 +168,8 @@ export default function CreateEncuestaFormScreen() {
     setError('');
     const err = validate();
     if (err) { setError(err); return; }
-    const ok = await uploadImageIfNeeded();
-    if (!ok) return;
+    const imgRes = await uploadImageIfNeeded();
+    if (imgRes === null) return;
 
     setSaving(true);
     const tit = titulo.trim();
@@ -208,8 +211,8 @@ export default function CreateEncuestaFormScreen() {
       p_multiopcion: multiopcion,
       p_opciones: trimmedOps,
       p_phones_participantes: [],
-      p_imagen_key: imageKey,
-      p_imagen_url: imageUrl,
+      p_imagen_key: imgRes.key,
+      p_imagen_url: imgRes.url,
       p_abierta: true,
       p_link_uuid: linkUuid,
     });
@@ -253,6 +256,8 @@ export default function CreateEncuestaFormScreen() {
           personas_votadas: 0,
           created_at: new Date().toISOString(),
           finalizada_at: null,
+          imagenR2Key: imageKeyRef.current,
+          imagenR2Url: imageUrlRef.current,
         };
         cached.encuestas.unshift(newEncuesta);
         cached.votedIds ??= [];
@@ -285,8 +290,8 @@ export default function CreateEncuestaFormScreen() {
     setError('');
     const err = validate();
     if (err) { setError(err); return; }
-    const ok = await uploadImageIfNeeded();
-    if (!ok) return;
+    const imgRes = await uploadImageIfNeeded();
+    if (imgRes === null) return;
 
     setSaving(true);
     const tit = titulo.trim();
@@ -328,8 +333,8 @@ export default function CreateEncuestaFormScreen() {
       p_multiopcion: multiopcion,
       p_opciones: trimmedOps,
       p_phones_participantes: phones,
-      p_imagen_key: imageKey,
-      p_imagen_url: imageUrl,
+      p_imagen_key: imgRes.key,
+      p_imagen_url: imgRes.url,
       p_abierta: false,
       p_link_uuid: null,
     });
@@ -373,6 +378,8 @@ export default function CreateEncuestaFormScreen() {
           personas_votadas: 0,
           created_at: new Date().toISOString(),
           finalizada_at: null,
+          imagenR2Key: imageKeyRef.current,
+          imagenR2Url: imageUrlRef.current,
         };
         cached.encuestas.unshift(newEncuesta);
         cached.votedIds ??= [];
@@ -410,6 +417,16 @@ export default function CreateEncuestaFormScreen() {
   const cancel = () => {
     clear();
     router.replace('/groups');
+  };
+
+  const handleCreate = async () => {
+    if (formData.skipContacts || selected.length > 0) {
+      return handleGroupSubmit();
+    }
+    if (privacyMode === 'private') {
+      return handleSelectParticipants();
+    }
+    return handleOpenSurvey();
   };
 
   return (
@@ -482,39 +499,47 @@ export default function CreateEncuestaFormScreen() {
 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
-        {formData.skipContacts || selected.length > 0 ? (
-          <View style={styles.actions}>
-            <Pressable style={styles.secondary} onPress={cancel} disabled={saving}>
-              <Text style={styles.secondaryText}>{t('cancel')}</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.primary, saving && styles.primaryDisabled]}
-              onPress={handleGroupSubmit}
-              disabled={saving || uploadingImage}>
-              <Text style={styles.primaryText}>{saving ? t('creating') : t('createPoll')}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <View style={styles.actions}>
+        {!formData.skipContacts && selected.length === 0 && (
+          <View style={styles.privacySection}>
+            <Text style={styles.label}>{t('privacyScope')}</Text>
+            <View style={styles.segmentedControl}>
               <Pressable
-                style={styles.primaryOutline}
-                onPress={handleSelectParticipants}
-                disabled={saving || uploadingImage}>
-                <Text style={styles.primaryOutlineText}>{t('selectParticipants')}</Text>
+                style={[styles.segment, privacyMode === 'private' && styles.segmentSelected]}
+                onPress={() => setPrivacyMode('private')}>
+                <MaterialIcons
+                  name="people"
+                  size={18}
+                  color={privacyMode === 'private' ? '#FFF' : '#666'}
+                />
+                <Text style={[styles.segmentText, privacyMode === 'private' && styles.segmentTextSelected]}>
+                  {t('privateOption')}
+                </Text>
               </Pressable>
               <Pressable
-                style={styles.primary}
-                onPress={handleOpenSurvey}
-                disabled={saving || uploadingImage}>
-                <Text style={styles.primaryText}>{saving ? t('creating') : t('openSurvey')}</Text>
+                style={[styles.segment, privacyMode === 'open' && styles.segmentSelected]}
+                onPress={() => setPrivacyMode('open')}>
+                <MaterialIcons
+                  name="public"
+                  size={18}
+                  color={privacyMode === 'open' ? '#FFF' : '#666'}
+                />
+                <Text style={[styles.segmentText, privacyMode === 'open' && styles.segmentTextSelected]}>
+                  {t('openOption')}
+                </Text>
               </Pressable>
             </View>
-            <Pressable style={styles.cancelBtn} onPress={cancel} disabled={saving}>
-              <Text style={styles.secondaryText}>{t('cancel')}</Text>
-            </Pressable>
-          </>
+          </View>
         )}
+
+        <Pressable
+          style={[styles.primaryFull, saving && styles.primaryDisabled]}
+          onPress={handleCreate}
+          disabled={saving || uploadingImage}>
+          <Text style={styles.primaryText}>{saving ? t('creating') : t('createPoll')}</Text>
+        </Pressable>
+        <Pressable style={styles.cancelBtn} onPress={cancel} disabled={saving}>
+          <Text style={styles.secondaryText}>{t('cancel')}</Text>
+        </Pressable>
       </ScrollView>
 
       {adLoading && (
@@ -566,34 +591,21 @@ const styles = StyleSheet.create({
   boxOn: { backgroundColor: '#1F6FEB', borderColor: '#1F6FEB' },
   checkboxLabel: { fontSize: 16, flex: 1 },
   error: { color: '#C62828', marginBottom: 12 },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  primary: {
-    flex: 1,
+  primaryFull: {
     backgroundColor: '#1F6FEB',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: 8,
   },
   primaryDisabled: { opacity: 0.6 },
   primaryText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
-  primaryOutline: {
-    flex: 1,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#1F6FEB',
-  },
-  primaryOutlineText: { color: '#1F6FEB', fontWeight: '600', fontSize: 14, textAlign: 'center' },
-  secondary: { flex: 1, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   secondaryText: { color: '#1F6FEB', fontWeight: '600', fontSize: 14 },
   cancelBtn: {
     alignItems: 'center',
     paddingVertical: 14,
     marginTop: 4,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CCC',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -627,4 +639,24 @@ const styles = StyleSheet.create({
   imageRemoveText: { color: '#C62828', fontWeight: '600', fontSize: 13 },
   uploadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   uploadingText: { color: '#888', fontSize: 13 },
+  privacySection: { marginBottom: 24 },
+  segmentedControl: {
+    flexDirection: 'row',
+    marginTop: 8,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 24,
+    padding: 3,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 22,
+  },
+  segmentSelected: { backgroundColor: '#1F6FEB' },
+  segmentText: { fontSize: 15, fontWeight: '600', color: '#999' },
+  segmentTextSelected: { color: '#FFF' },
 });

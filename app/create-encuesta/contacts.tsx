@@ -240,6 +240,8 @@ export default function CreateEncuestaContactsScreen() {
           personas_votadas: 0,
           created_at: new Date().toISOString(),
           finalizada_at: null,
+          imagenR2Key: formData.imagenKey,
+          imagenR2Url: formData.imagenUrl,
         };
         cached.encuestas.unshift(newEncuesta);
         cached.votedIds ??= [];
