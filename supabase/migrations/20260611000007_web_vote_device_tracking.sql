@@ -5,6 +5,7 @@ create table if not exists public.encuestas_web_voto_tracking (
   id bigint generated always as identity primary key,
   id_encuesta uuid not null references public.encuestas(id) on delete cascade,
   device_uuid text not null,
+  user_web text not null,
   ip_address text not null,
   user_agent text not null default '',
   created_at timestamptz not null default now()
@@ -103,11 +104,34 @@ begin
   end if;
 
   if p_device_uuid is not null then
-    insert into public.encuestas_web_voto_tracking (id_encuesta, device_uuid, ip_address, user_agent)
-    values (p_id_encuesta, p_device_uuid, p_ip_address, p_user_agent);
+    insert into public.encuestas_web_voto_tracking (id_encuesta, device_uuid, user_web, ip_address, user_agent)
+    values (p_id_encuesta, p_device_uuid, trim(p_user_web), p_ip_address, p_user_agent);
   end if;
 end;
 $$;
 
 grant execute on function public.votar_encuesta_web(uuid, uuid[], text, text, text, text) to anon;
 grant execute on function public.votar_encuesta_web(uuid, uuid[], text, text, text, text) to authenticated;
+
+-- Check if a web device has already voted and return their nick + selected option ids
+create or replace function public.get_encuesta_web_voto(
+  p_id_encuesta uuid,
+  p_device_uuid text
+)
+returns table (user_web text, opcion_ids uuid[])
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select t.user_web, array_agg(v.opcion_id) as opcion_ids
+  from public.encuestas_web_voto_tracking t
+  join public.encuestas_votos v on v.id_encuesta = t.id_encuesta
+  where t.id_encuesta = p_id_encuesta and t.device_uuid = p_device_uuid
+  group by t.user_web;
+end;
+$$;
+
+grant execute on function public.get_encuesta_web_voto(uuid, text) to anon;
+grant execute on function public.get_encuesta_web_voto(uuid, text) to authenticated;
