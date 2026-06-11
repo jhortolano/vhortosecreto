@@ -133,6 +133,15 @@ When user changes nick in profile.tsx or completes profile in complete-profile.t
 - Network error detection: `error.code` is falsy or message contains "fetch"/"network"/"Failed to"
 - `encuestasCache` now also stores `profile` (phone, nick, avatar_url) for offline identity
 
+## Web voting anti-double-vote (device tracking)
+- **Table**: `encuestas_web_voto_tracking` — `(id, id_encuesta FK CASCADE, device_uuid, ip_address, user_agent, created_at)`
+- **Unique index**: `(id_encuesta, device_uuid)` — mismo dispositivo no puede votar dos veces
+- **device_uuid**: generado con `crypto.randomUUID()`, persistido en `localStorage` bajo key `vhorto_device_uuid`
+- **IP + User-Agent**: se extraen server-side en el API Route de Vercel (`x-forwarded-for`, `user-agent` header), solo para logging
+- **RPC `votar_encuesta_web`**: parámetros nuevos `p_device_uuid`, `p_ip_address`, `p_user_agent`. Checkea duplicado en tracking antes de votar
+- **API Route**: `/api/vote` en `vhortosecreto-vercel` — recibe POST con `{ id_encuesta, opcion_ids, user_web, device_uuid }`, llama a Supabase con `service_role`
+- **Env var**: `SUPABASE_SERVICE_ROLE_KEY` necesaria en `.env.local` y Vercel dashboard
+
 ## Admin panel (separate project)
 - `/Volumes/dev/Projects/React/admin-vhortosecreto/`
 - Next.js deployed on Vercel (`admin-vhortosecreto`)
