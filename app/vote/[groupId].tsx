@@ -14,6 +14,7 @@ import { useT } from '@/lib/i18n';
 import { getDetailCache, setDetailCache } from '@/lib/encuestaDetailCache';
 import { getUserId } from '@/lib/offline';
 import { addToQueue } from '@/lib/offlineQueue';
+import QrDisplay from '@/lib/QrDisplay';
 
 type Encuesta = {
   id: string;
@@ -60,6 +61,7 @@ export default function VoteScreen() {
   const [encuestaImageUri, setEncuestaImageUri] = useState<string | null>(null);
   const [encuestaImageSize, setEncuestaImageSize] = useState<{ width: number; height: number } | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [voteConfirmation, setVoteConfirmation] = useState<string[] | null>(null);
@@ -94,11 +96,22 @@ export default function VoteScreen() {
         sorted = [...ops].sort((a, b) => b.total_votos - a.total_votos || a.opcion_texto.localeCompare(b.opcion_texto));
       }
 
-      if (imgResult.data) {
+      let imagenLocalUri: string | null = null;
+      let imagenR2Key: string | null = null;
+      let imagenR2Url: string | null = null;
+      let imgData = imgResult.data as { r2_key: string; r2_url: string } | null;
+      // RLS blocks direct query for open surveys, fall back to security-definer RPC
+      if (!imgData) {
+        const { data: rpcImg } = await supabase.rpc('get_encuesta_imagen', { p_id_encuesta: groupId });
+        imgData = (rpcImg as { r2_key: string; r2_url: string }[] | null)?.[0] ?? null;
+      }
+      if (imgData) {
+        imagenR2Key = imgData.r2_key;
+        imagenR2Url = imgData.r2_url;
         try {
-          const localUri = await ensureImageDownloaded(imgResult.data.r2_key, imgResult.data.r2_url);
-          setEncuestaImageUri(localUri);
-          RNImage.getSize(localUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
+          imagenLocalUri = await ensureImageDownloaded(imgData.r2_key, imgData.r2_url);
+          setEncuestaImageUri(imagenLocalUri);
+          RNImage.getSize(imagenLocalUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
         } catch {
           setImageError(true);
         }
@@ -106,7 +119,7 @@ export default function VoteScreen() {
 
       void fetchVotantesData(e, haVotadoActual, sorted);
 
-      return { encuesta: e, opciones: sorted, haVotado: haVotadoActual, votantes: [] };
+      return { encuesta: { ...e, imagenLocalUri, imagenR2Key, imagenR2Url }, opciones: sorted, haVotado: haVotadoActual, votantes: [] };
     };
 
     const load = async () => {
@@ -120,6 +133,15 @@ export default function VoteScreen() {
         setEncuesta(cached.encuesta);
         setOpciones(cached.opciones);
         setHaVotado(cached.haVotado);
+        if (cached.encuesta?.imagenLocalUri) {
+          setEncuestaImageUri(cached.encuesta.imagenLocalUri);
+          RNImage.getSize(cached.encuesta.imagenLocalUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
+        } else if (cached.encuesta?.imagenR2Key && cached.encuesta?.imagenR2Url) {
+          ensureImageDownloaded(cached.encuesta.imagenR2Key, cached.encuesta.imagenR2Url).then((localUri) => {
+            setEncuestaImageUri(localUri);
+            RNImage.getSize(localUri, (w, h) => setEncuestaImageSize({ width: w, height: h }), () => {});
+          }).catch(() => setImageError(true));
+        }
         if (cached.votantes?.length) {
           setVotantes(cached.votantes);
         }
@@ -135,6 +157,13 @@ export default function VoteScreen() {
         setEncuesta(fresh.encuesta);
         setOpciones(fresh.opciones);
         setHaVotado(fresh.haVotado);
+        // Preserve image data from cache if network returns null (RLS blocks for open surveys)
+        if (cached?.encuesta?.imagenLocalUri && !fresh.encuesta.imagenLocalUri) {
+          fresh.encuesta.imagenLocalUri = cached.encuesta.imagenLocalUri;
+          fresh.encuesta.imagenR2Key = cached.encuesta.imagenR2Key;
+          fresh.encuesta.imagenR2Url = cached.encuesta.imagenR2Url;
+          setEncuestaImageUri(cached.encuesta.imagenLocalUri);
+        }
         setDetailCache(groupId, fresh);
       } catch (e) {
         if (!cached) setErrorMessage(e instanceof Error ? e.message : t('error'));
@@ -304,11 +333,13 @@ export default function VoteScreen() {
     let list: Votante[] = [];
 
     if (enc.abierta) {
-      const { data: votedPhonesData } = await supabase
+      const { data: votedData } = await supabase
         .rpc('get_encuesta_votantes', { p_id_encuesta: groupId });
-      const votedPhones = (votedPhonesData as { phone: string }[] | null) ?? [];
-      if (votedPhones.length > 0) {
-        const phoneSet = new Set(votedPhones.map(v => v.phone));
+      const rows = (votedData as { phone: string | null; nick: string | null }[] | null) ?? [];
+      const phoneRows = rows.filter(r => r.phone);
+      const webRows = rows.filter(r => r.nick && !r.phone);
+      const phoneSet = new Set(phoneRows.map(v => v.phone));
+      if (phoneSet.size > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('phone, nick, avatar_url')
@@ -319,6 +350,11 @@ export default function VoteScreen() {
           avatar_url: p.avatar_url,
           haVotado: true,
         }));
+      }
+      for (const w of webRows) {
+        if (!list.some(v => v.phone_usuario === w.nick)) {
+          list.push({ phone_usuario: w.nick!, nick_usuario: w.nick, avatar_url: null, haVotado: true });
+        }
       }
     } else {
       const { data, error } = await supabase
@@ -335,7 +371,7 @@ export default function VoteScreen() {
       if (shouldShowVoters) {
         const { data: votedPhonesData } = await supabase
           .rpc('get_encuesta_votantes', { p_id_encuesta: groupId });
-        const votedPhones = new Set((votedPhonesData as { phone: string }[] | null)?.map(v => v.phone) ?? []);
+        const votedPhones = new Set((votedPhonesData as { phone: string | null }[] | null)?.map(v => v.phone).filter(Boolean) ?? []);
         if (votedPhones.size > 0) {
           list = list.map(v => ({ ...v, haVotado: votedPhones.has(v.phone_usuario) }));
         }
@@ -473,6 +509,10 @@ export default function VoteScreen() {
             <Pressable style={styles.shareLinkBtn} onPress={handleCopyLink}>
               <MaterialIcons name="content-copy" size={16} color="#1F6FEB" />
               <Text style={styles.shareLinkBtnText}>{t('copyLink')}</Text>
+            </Pressable>
+            <Pressable style={styles.shareLinkBtn} onPress={() => setShowQr(true)}>
+              <MaterialIcons name="qr-code" size={16} color="#1F6FEB" />
+              <Text style={styles.shareLinkBtnText}>QR</Text>
             </Pressable>
             <Pressable style={styles.shareLinkBtn} onPress={handleShareLink}>
               <MaterialIcons name="share" size={16} color="#1F6FEB" />
@@ -854,6 +894,17 @@ export default function VoteScreen() {
           )}
         </Pressable>
       </Modal>
+      <Modal visible={showQr} transparent animationType="fade" onRequestClose={() => setShowQr(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowQr(false)}>
+          <Pressable style={styles.qrModalBox} onPress={() => {}}>
+            <QrDisplay
+              value={`https://vhortosecreto.vercel.app/open/${encuesta?.link_uuid ?? ''}`}
+              size={200}
+            />
+            <Text style={styles.qrModalText}>{encuesta?.titulo}</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -1064,21 +1115,23 @@ const styles = StyleSheet.create({
   },
   shareLinkRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginBottom: 12,
   },
   shareLinkBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 4,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     borderWidth: 1,
     borderColor: '#1F6FEB',
     borderRadius: 10,
   },
   shareLinkBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1F6FEB',
   },
@@ -1238,6 +1291,19 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width * 0.7,
     height: Dimensions.get('window').width * 0.7,
     borderRadius: 16,
+  },
+  qrModalBox: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    gap: 16,
+  },
+  qrModalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
   },
   encuestaImage: {
     width: '100%',
