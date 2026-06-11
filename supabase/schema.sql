@@ -689,6 +689,7 @@ begin
       select hv.user_id
       from public.encuestas_ha_votado hv
       where hv.id_encuesta = p_id_encuesta
+        and hv.user_id is not null
     ) t;
   else
     select votantes into v_total_posibles
