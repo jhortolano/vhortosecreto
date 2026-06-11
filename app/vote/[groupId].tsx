@@ -776,6 +776,20 @@ export default function VoteScreen() {
                       cached.encuestas = cached.encuestas.filter((e: any) => e.id !== groupId);
                       await saveCache(cached);
                     }
+                    const userId = await getUserId();
+                    const { data: profile } = await supabase
+                      .from('profiles')
+                      .select('phone')
+                      .eq('id', userId ?? '')
+                      .single();
+                    supabase.functions.invoke('send-push', {
+                      body: {
+                        type: 'encuesta_finalizada',
+                        encuesta_id: groupId,
+                        titulo: encuesta?.titulo || '',
+                        exclude_phone: profile?.phone || undefined,
+                      },
+                    }).catch(() => {});
                     router.replace('/groups');
                   },
                 },

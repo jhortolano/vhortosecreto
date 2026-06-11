@@ -34,6 +34,25 @@ async function getParticipantPhones(supabase: any, encuestaId: string): Promise<
     }
   }
 
+  const { data: haVotado } = await supabase
+    .from('encuestas_ha_votado')
+    .select('user_id')
+    .eq('id_encuesta', encuestaId)
+    .not('user_id', 'is', null);
+
+  if (haVotado && haVotado.length > 0) {
+    const voterIds = haVotado.map((v: any) => v.user_id).filter(Boolean);
+    const { data: voterProfiles } = await supabase
+      .from('profiles')
+      .select('phone')
+      .in('id', voterIds);
+    if (voterProfiles) {
+      for (const p of voterProfiles) {
+        if (p.phone) phones.push(p.phone);
+      }
+    }
+  }
+
   return [...new Set(phones)];
 }
 
