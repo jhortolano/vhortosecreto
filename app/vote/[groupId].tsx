@@ -703,12 +703,33 @@ export default function VoteScreen() {
                 });
               }
 
-              if (numOps >= 3 && third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
-                cards.push({
-                  icon: 'auto-awesome',
-                  title: 'Hito',
-                  text: 'La distancia entre la primera y la última opción es considerable.',
-                });
+              if (numOps >= 3) {
+                const spread = first.total_votos - third.total_votos;
+                if (first.total_votos >= third.total_votos * 2) {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'La distancia entre la primera y la última opción es considerable.',
+                  });
+                } else if (spread <= 2) {
+                  cards.push({
+                    icon: 'whatshot',
+                    title: 'Hito',
+                    text: 'Las diferencias entre las primeras opciones son mínimas.',
+                  });
+                } else if (second.total_votos === third.total_votos) {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'Hay un empate entre la segunda y tercera opción.',
+                  });
+                } else {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'Los votos están bastante repartidos entre las opciones.',
+                  });
+                }
               }
 
               return cards.length > 0 ? (
