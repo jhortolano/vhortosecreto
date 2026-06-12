@@ -681,25 +681,17 @@ export default function VoteScreen() {
 
               if (first && second && first.total_votos > second.total_votos) {
                 const diffPct = Math.round(((first.total_votos - second.total_votos) / second.total_votos) * 100);
-                if (numOps >= 4) {
-                  cards.push({
-                    icon: 'trending-up',
-                    title: 'Tendencia actual',
-                    text: `La opción líder tiene un ${diffPct}% más de votos que el segundo lugar.`,
-                  });
-                } else {
-                  let text: string;
-                  if (diffPct >= 100) text = 'La opción líder tiene bastante más apoyo que las demás.';
-                  else if (diffPct >= 50) text = 'La opción líder va claramente por delante.';
-                  else if (diffPct >= 25) text = 'La opción líder tiene una ventaja notable sobre las demás.';
-                  else if (diffPct >= 10) text = 'La opción líder tiene una ligera ventaja sobre las demás.';
-                  else text = 'No hay una diferencia significativa entre las opciones.';
-                  cards.push({
-                    icon: 'trending-up',
-                    title: 'Tendencia actual',
-                    text,
-                  });
-                }
+                let text: string;
+                if (diffPct >= 100) text = 'La opción líder tiene bastante más apoyo que las demás.';
+                else if (diffPct >= 50) text = 'La opción líder va claramente por delante.';
+                else if (diffPct >= 25) text = 'La opción líder tiene una ventaja notable sobre las demás.';
+                else if (diffPct >= 10) text = 'La opción líder tiene una ligera ventaja sobre las demás.';
+                else text = 'No hay una diferencia significativa entre las opciones.';
+                cards.push({
+                  icon: 'trending-up',
+                  title: 'Tendencia actual',
+                  text,
+                });
               }
 
               if (sinVotos.length > 0) {
@@ -710,24 +702,16 @@ export default function VoteScreen() {
                 });
               }
 
-              if (third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
-                cards.push({
-                  icon: 'auto-awesome',
-                  title: 'Hito',
-                  text: `Una de las opciones ha duplicado o más los votos de la opción que va en tercer lugar.`,
-                });
-              } else if (second && second.total_votos > 0 && first.total_votos >= second.total_votos * 2) {
-                cards.push({
-                  icon: 'auto-awesome',
-                  title: 'Hito',
-                  text: `La opción líder tiene el doble de votos que la segunda opción.`,
-                });
-              } else if (second && second.total_votos > 0 && first.total_votos < second.total_votos * 1.5) {
-                cards.push({
-                  icon: 'whatshot',
-                  title: 'Reñido',
-                  text: `Las primeras opciones están muy cerca. Cualquier voto puede cambiar el resultado.`,
-                });
+              if (numOps >= 3 && third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
+                const diffFirstSecond = first.total_votos - second.total_votos;
+                const diffFirstThird = first.total_votos - third.total_votos;
+                if (diffFirstThird > diffFirstSecond * 1.5) {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'La distancia entre la primera y la última opción es considerable.',
+                  });
+                }
               }
 
               return cards.length > 0 ? (
