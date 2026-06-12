@@ -530,16 +530,16 @@ export default function CreateEncuestaFormScreen() {
             </View>
             <View style={styles.infoRow}>
               <Pressable style={styles.infoUnderSegment} onPress={() => Alert.alert(
-                'Encuestas privadas',
-                'Solo pueden votar los usuarios que tú elijas. Funciona a través de la aplicación y finaliza automáticamente cuando todos han votado.',
-                [{ text: 'Cerrar' }]
+                t('infoPrivateTitle'),
+                t('infoPrivateDesc'),
+                [{ text: t('infoClose') }]
               )}>
                 <MaterialIcons name="info-outline" size={16} color="#1F6FEB" />
               </Pressable>
               <Pressable style={styles.infoUnderSegment} onPress={() => Alert.alert(
-                'Encuestas abiertas',
-                'Puede votar cualquier persona que tenga el enlace o el código QR. La encuesta no finaliza hasta que el creador pulse "Terminar encuesta".',
-                [{ text: 'Cerrar' }]
+                t('infoOpenTitle'),
+                t('infoOpenDesc'),
+                [{ text: t('infoClose') }]
               )}>
                 <MaterialIcons name="info-outline" size={16} color="#0F8A3E" />
               </Pressable>
