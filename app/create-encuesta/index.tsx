@@ -503,44 +503,48 @@ export default function CreateEncuestaFormScreen() {
           <View style={styles.privacySection}>
             <Text style={styles.label}>{t('privacyScope')}</Text>
             <View style={styles.segmentedControl}>
-              <Pressable
-                style={[styles.segment, privacyMode === 'private' && styles.segmentSelected]}
-                onPress={() => setPrivacyMode('private')}>
-                <MaterialIcons
-                  name="people"
-                  size={18}
-                  color={privacyMode === 'private' ? '#FFF' : '#666'}
-                />
-                <Text style={[styles.segmentText, privacyMode === 'private' && styles.segmentTextSelected]}>
-                  {t('privateOption')}
-                </Text>
-                <Pressable onPress={() => Alert.alert(
+              <View style={styles.segmentCol}>
+                <Pressable
+                  style={[styles.segment, privacyMode === 'private' && styles.segmentSelected]}
+                  onPress={() => setPrivacyMode('private')}>
+                  <MaterialIcons
+                    name="people"
+                    size={18}
+                    color={privacyMode === 'private' ? '#FFF' : '#666'}
+                  />
+                  <Text style={[styles.segmentText, privacyMode === 'private' && styles.segmentTextSelected]}>
+                    {t('privateOption')}
+                  </Text>
+                </Pressable>
+                <Pressable style={styles.segmentInfo} onPress={() => Alert.alert(
                   'Encuestas privadas',
                   'Solo pueden votar los usuarios que tú elijas. Funciona a través de la aplicación y finaliza automáticamente cuando todos han votado.',
                   [{ text: 'Cerrar' }]
                 )}>
-                  <MaterialIcons name="info-outline" size={14} color={privacyMode === 'private' ? '#FFF' : '#1F6FEB'} />
+                  <MaterialIcons name="info-outline" size={16} color="#1F6FEB" />
                 </Pressable>
-              </Pressable>
-              <Pressable
-                style={[styles.segment, privacyMode === 'open' && styles.segmentSelected]}
-                onPress={() => setPrivacyMode('open')}>
-                <MaterialIcons
-                  name="public"
-                  size={18}
-                  color={privacyMode === 'open' ? '#FFF' : '#666'}
-                />
-                <Text style={[styles.segmentText, privacyMode === 'open' && styles.segmentTextSelected]}>
-                  {t('openOption')}
-                </Text>
-                <Pressable onPress={() => Alert.alert(
+              </View>
+              <View style={styles.segmentCol}>
+                <Pressable
+                  style={[styles.segment, privacyMode === 'open' && styles.segmentSelected]}
+                  onPress={() => setPrivacyMode('open')}>
+                  <MaterialIcons
+                    name="public"
+                    size={18}
+                    color={privacyMode === 'open' ? '#FFF' : '#666'}
+                  />
+                  <Text style={[styles.segmentText, privacyMode === 'open' && styles.segmentTextSelected]}>
+                    {t('openOption')}
+                  </Text>
+                </Pressable>
+                <Pressable style={styles.segmentInfo} onPress={() => Alert.alert(
                   'Encuestas abiertas',
                   'Puede votar cualquier persona que tenga el enlace o el código QR. La encuesta no finaliza hasta que el creador pulse "Terminar encuesta".',
                   [{ text: 'Cerrar' }]
                 )}>
-                  <MaterialIcons name="info-outline" size={14} color={privacyMode === 'open' ? '#FFF' : '#0F8A3E'} />
+                  <MaterialIcons name="info-outline" size={16} color="#0F8A3E" />
                 </Pressable>
-              </Pressable>
+              </View>
             </View>
           </View>
         )}
@@ -661,16 +665,26 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 3,
   },
-  segment: {
+  segmentCol: {
     flex: 1,
-    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+  },
+  segment: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: 10,
     borderRadius: 22,
+    width: '100%',
   },
   segmentSelected: { backgroundColor: '#1F6FEB' },
   segmentText: { fontSize: 15, fontWeight: '600', color: '#999' },
   segmentTextSelected: { color: '#FFF' },
+  segmentInfo: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
 });
