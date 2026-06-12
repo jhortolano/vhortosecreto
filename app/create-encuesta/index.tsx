@@ -501,23 +501,7 @@ export default function CreateEncuestaFormScreen() {
 
         {!formData.skipContacts && selected.length === 0 && (
           <View style={styles.privacySection}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>{t('privacyScope')}</Text>
-              <Pressable onPress={() => Alert.alert(
-                'Encuestas privadas',
-                'Solo pueden votar los usuarios que tú elijas. Funciona a través de la aplicación y finaliza automáticamente cuando todos han votado.',
-                [{ text: 'Cerrar' }]
-              )}>
-                <MaterialIcons name="info-outline" size={18} color="#1F6FEB" />
-              </Pressable>
-              <Pressable onPress={() => Alert.alert(
-                'Encuestas abiertas',
-                'Puede votar cualquier persona que tenga el enlace o el código QR. La encuesta no finaliza hasta que el creador pulse "Terminar encuesta".',
-                [{ text: 'Cerrar' }]
-              )}>
-                <MaterialIcons name="info-outline" size={18} color="#0F8A3E" />
-              </Pressable>
-            </View>
+            <Text style={styles.label}>{t('privacyScope')}</Text>
             <View style={styles.segmentedControl}>
               <Pressable
                 style={[styles.segment, privacyMode === 'private' && styles.segmentSelected]}
@@ -530,6 +514,13 @@ export default function CreateEncuestaFormScreen() {
                 <Text style={[styles.segmentText, privacyMode === 'private' && styles.segmentTextSelected]}>
                   {t('privateOption')}
                 </Text>
+                <Pressable onPress={() => Alert.alert(
+                  'Encuestas privadas',
+                  'Solo pueden votar los usuarios que tú elijas. Funciona a través de la aplicación y finaliza automáticamente cuando todos han votado.',
+                  [{ text: 'Cerrar' }]
+                )}>
+                  <MaterialIcons name="info-outline" size={14} color={privacyMode === 'private' ? '#FFF' : '#1F6FEB'} />
+                </Pressable>
               </Pressable>
               <Pressable
                 style={[styles.segment, privacyMode === 'open' && styles.segmentSelected]}
@@ -542,6 +533,13 @@ export default function CreateEncuestaFormScreen() {
                 <Text style={[styles.segmentText, privacyMode === 'open' && styles.segmentTextSelected]}>
                   {t('openOption')}
                 </Text>
+                <Pressable onPress={() => Alert.alert(
+                  'Encuestas abiertas',
+                  'Puede votar cualquier persona que tenga el enlace o el código QR. La encuesta no finaliza hasta que el creador pulse "Terminar encuesta".',
+                  [{ text: 'Cerrar' }]
+                )}>
+                  <MaterialIcons name="info-outline" size={14} color={privacyMode === 'open' ? '#FFF' : '#0F8A3E'} />
+                </Pressable>
               </Pressable>
             </View>
           </View>
@@ -575,7 +573,6 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 120 },
   meta: { color: '#555', marginBottom: 16, fontSize: 14 },
   label: { fontWeight: '600', marginBottom: 6, color: '#333' },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   input: {
     borderWidth: 1,
     borderColor: '#DDD',
@@ -666,10 +663,10 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     paddingVertical: 10,
     borderRadius: 22,
   },
