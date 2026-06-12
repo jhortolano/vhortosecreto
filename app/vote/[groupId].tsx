@@ -662,6 +662,14 @@ export default function VoteScreen() {
 
         {!showVoteUI && (
           <View style={styles.insightsContainer}>
+            {esOwner && encuesta?.abierta && !encuesta.finalizada && (
+              <View style={styles.openOwnerBanner}>
+                <MaterialIcons name="info-outline" size={20} color="#E65100" />
+                <Text style={styles.openOwnerBannerText}>
+                  Esta es una encuesta abierta. Debes finalizarla de forma manual para mostrar los resultados.
+                </Text>
+              </View>
+            )}
             {(() => {
               const sorted = [...opciones].sort((a, b) => b.total_votos - a.total_votos);
               const first = sorted[0];
@@ -689,13 +697,19 @@ export default function VoteScreen() {
                 });
               }
 
-              if (first && third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
+              if (third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
                 cards.push({
                   icon: 'auto-awesome',
                   title: 'Hito',
                   text: `Una de las opciones ha duplicado o más los votos de la opción que va en tercer lugar.`,
                 });
-              } else if (first && second && second.total_votos > 0 && first.total_votos < second.total_votos * 1.5) {
+              } else if (second && second.total_votos > 0 && first.total_votos >= second.total_votos * 2) {
+                cards.push({
+                  icon: 'auto-awesome',
+                  title: 'Hito',
+                  text: `La opción líder tiene el doble de votos que la segunda opción.`,
+                });
+              } else if (second && second.total_votos > 0 && first.total_votos < second.total_votos * 1.5) {
                 cards.push({
                   icon: 'whatshot',
                   title: 'Reñido',
@@ -1166,6 +1180,24 @@ const styles = StyleSheet.create({
   },
   insightsContainer: {
     marginBottom: 20,
+  },
+  openOwnerBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FFF4E5',
+    borderWidth: 1,
+    borderColor: '#FFA000',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  openOwnerBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#8D6E00',
+    lineHeight: 18,
+    fontWeight: '500',
   },
   insightsInner: {
     gap: 10,
