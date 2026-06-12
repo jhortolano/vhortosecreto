@@ -503,48 +503,46 @@ export default function CreateEncuestaFormScreen() {
           <View style={styles.privacySection}>
             <Text style={styles.label}>{t('privacyScope')}</Text>
             <View style={styles.segmentedControl}>
-              <View style={styles.segmentCol}>
-                <Pressable
-                  style={[styles.segment, privacyMode === 'private' && styles.segmentSelected]}
-                  onPress={() => setPrivacyMode('private')}>
-                  <MaterialIcons
-                    name="people"
-                    size={18}
-                    color={privacyMode === 'private' ? '#FFF' : '#666'}
-                  />
-                  <Text style={[styles.segmentText, privacyMode === 'private' && styles.segmentTextSelected]}>
-                    {t('privateOption')}
-                  </Text>
-                </Pressable>
-                <Pressable style={styles.segmentInfo} onPress={() => Alert.alert(
-                  'Encuestas privadas',
-                  'Solo pueden votar los usuarios que tú elijas. Funciona a través de la aplicación y finaliza automáticamente cuando todos han votado.',
-                  [{ text: 'Cerrar' }]
-                )}>
-                  <MaterialIcons name="info-outline" size={16} color="#1F6FEB" />
-                </Pressable>
-              </View>
-              <View style={styles.segmentCol}>
-                <Pressable
-                  style={[styles.segment, privacyMode === 'open' && styles.segmentSelected]}
-                  onPress={() => setPrivacyMode('open')}>
-                  <MaterialIcons
-                    name="public"
-                    size={18}
-                    color={privacyMode === 'open' ? '#FFF' : '#666'}
-                  />
-                  <Text style={[styles.segmentText, privacyMode === 'open' && styles.segmentTextSelected]}>
-                    {t('openOption')}
-                  </Text>
-                </Pressable>
-                <Pressable style={styles.segmentInfo} onPress={() => Alert.alert(
-                  'Encuestas abiertas',
-                  'Puede votar cualquier persona que tenga el enlace o el código QR. La encuesta no finaliza hasta que el creador pulse "Terminar encuesta".',
-                  [{ text: 'Cerrar' }]
-                )}>
-                  <MaterialIcons name="info-outline" size={16} color="#0F8A3E" />
-                </Pressable>
-              </View>
+              <Pressable
+                style={[styles.segment, privacyMode === 'private' && styles.segmentSelected]}
+                onPress={() => setPrivacyMode('private')}>
+                <MaterialIcons
+                  name="people"
+                  size={18}
+                  color={privacyMode === 'private' ? '#FFF' : '#666'}
+                />
+                <Text style={[styles.segmentText, privacyMode === 'private' && styles.segmentTextSelected]}>
+                  {t('privateOption')}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.segment, privacyMode === 'open' && styles.segmentSelected]}
+                onPress={() => setPrivacyMode('open')}>
+                <MaterialIcons
+                  name="public"
+                  size={18}
+                  color={privacyMode === 'open' ? '#FFF' : '#666'}
+                />
+                <Text style={[styles.segmentText, privacyMode === 'open' && styles.segmentTextSelected]}>
+                  {t('openOption')}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={styles.infoRow}>
+              <Pressable style={styles.infoUnderSegment} onPress={() => Alert.alert(
+                'Encuestas privadas',
+                'Solo pueden votar los usuarios que tú elijas. Funciona a través de la aplicación y finaliza automáticamente cuando todos han votado.',
+                [{ text: 'Cerrar' }]
+              )}>
+                <MaterialIcons name="info-outline" size={16} color="#1F6FEB" />
+              </Pressable>
+              <Pressable style={styles.infoUnderSegment} onPress={() => Alert.alert(
+                'Encuestas abiertas',
+                'Puede votar cualquier persona que tenga el enlace o el código QR. La encuesta no finaliza hasta que el creador pulse "Terminar encuesta".',
+                [{ text: 'Cerrar' }]
+              )}>
+                <MaterialIcons name="info-outline" size={16} color="#0F8A3E" />
+              </Pressable>
             </View>
           </View>
         )}
@@ -665,26 +663,26 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 3,
   },
-  segmentCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
   segment: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
     borderRadius: 22,
-    width: '100%',
   },
   segmentSelected: { backgroundColor: '#1F6FEB' },
   segmentText: { fontSize: 15, fontWeight: '600', color: '#999' },
   segmentTextSelected: { color: '#FFF' },
-  segmentInfo: {
+  infoRow: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  infoUnderSegment: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: 4,
   },
 });
