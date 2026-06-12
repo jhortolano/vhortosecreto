@@ -633,6 +633,7 @@ export default function VoteScreen() {
                   isSelected && styles.optionSelected,
                   isWinner && styles.optionWinner,
                   showVoteUI && styles.optionPressable,
+                  !showVoteUI && styles.optionDisabled,
                 ]}
                 onPress={() => toggleOption(op.id)}
                 disabled={!showVoteUI}>
@@ -644,7 +645,7 @@ export default function VoteScreen() {
                       </View>
                     )}
                     <View style={styles.optionHeaderRow}>
-                      <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                      <Text style={[styles.optionText, isSelected && styles.optionTextSelected, !showVoteUI && styles.optionTextDisabled]}>
                         {op.opcion_texto}
                       </Text>
                       {isWinner && encuesta.finalizada && (
@@ -1081,6 +1082,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
   },
+  optionDisabled: {
+    backgroundColor: '#F5F5F5',
+    opacity: 0.75,
+  },
   optionPressable: {
     borderColor: '#1F6FEB',
   },
@@ -1133,6 +1138,9 @@ const styles = StyleSheet.create({
   optionTextSelected: {
     color: '#1244A8',
     fontWeight: '600',
+  },
+  optionTextDisabled: {
+    color: '#999',
   },
   optionStats: {
     flexDirection: 'row',
