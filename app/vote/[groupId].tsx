@@ -704,15 +704,11 @@ export default function VoteScreen() {
               }
 
               if (numOps >= 3 && third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
-                const diffFirstSecond = first.total_votos - second.total_votos;
-                const diffFirstThird = first.total_votos - third.total_votos;
-                if (diffFirstThird > diffFirstSecond * 1.5) {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'La distancia entre la primera y la última opción es considerable.',
-                  });
-                }
+                cards.push({
+                  icon: 'auto-awesome',
+                  title: 'Hito',
+                  text: 'La distancia entre la primera y la última opción es considerable.',
+                });
               }
 
               return cards.length > 0 ? (
