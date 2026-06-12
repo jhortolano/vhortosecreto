@@ -705,23 +705,45 @@ export default function VoteScreen() {
 
               if (numOps >= 3) {
                 const spread = first.total_votos - third.total_votos;
+                const midGap = second.total_votos - third.total_votos;
+                const totalV = totalVotos;
+                const pctFirst = totalV > 0 ? (first.total_votos / totalV) * 100 : 0;
+
                 if (first.total_votos >= third.total_votos * 2) {
                   cards.push({
                     icon: 'auto-awesome',
                     title: 'Hito',
                     text: 'La distancia entre la primera y la última opción es considerable.',
                   });
-                } else if (spread <= 2) {
+                } else if (spread <= 1 && first.total_votos > third.total_votos) {
                   cards.push({
                     icon: 'whatshot',
                     title: 'Hito',
-                    text: 'Las diferencias entre las primeras opciones son mínimas.',
+                    text: 'Las primeras opciones están muy igualadas.',
                   });
-                } else if (second.total_votos === third.total_votos) {
+                } else if (second.total_votos === third.total_votos && spread > 1) {
                   cards.push({
                     icon: 'auto-awesome',
                     title: 'Hito',
                     text: 'Hay un empate entre la segunda y tercera opción.',
+                  });
+                } else if (pctFirst < 35) {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'Ninguna opción acapara la mayoría, cualquiera puede ganar.',
+                  });
+                } else if (midGap >= 2 && spread > 2) {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'Hay una diferencia notable entre la segunda y tercera opción.',
+                  });
+                } else if (second.total_votos > third.total_votos && first.total_votos > second.total_votos + 1) {
+                  cards.push({
+                    icon: 'auto-awesome',
+                    title: 'Hito',
+                    text: 'Se empieza a dibujar una clara jerarquía entre las opciones.',
                   });
                 } else {
                   cards.push({
