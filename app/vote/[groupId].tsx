@@ -676,15 +676,28 @@ export default function VoteScreen() {
               const second = sorted[1];
               const third = sorted[2];
               const sinVotos = opciones.filter(o => o.total_votos === 0);
+              const numOps = opciones.length;
               const cards: { icon: string; title: string; text: string }[] = [];
 
-              if (first && second && totalVotos > 0) {
+              if (first && second && first.total_votos > second.total_votos) {
                 const diffPct = Math.round(((first.total_votos - second.total_votos) / second.total_votos) * 100);
-                if (diffPct > 0) {
+                if (numOps >= 4) {
                   cards.push({
                     icon: 'trending-up',
                     title: 'Tendencia actual',
                     text: `La opción líder tiene un ${diffPct}% más de votos que el segundo lugar.`,
+                  });
+                } else {
+                  let text: string;
+                  if (diffPct >= 100) text = 'La opción líder tiene bastante más apoyo que las demás.';
+                  else if (diffPct >= 50) text = 'La opción líder va claramente por delante.';
+                  else if (diffPct >= 25) text = 'La opción líder tiene una ventaja notable sobre las demás.';
+                  else if (diffPct >= 10) text = 'La opción líder tiene una ligera ventaja sobre las demás.';
+                  else text = 'No hay una diferencia significativa entre las opciones.';
+                  cards.push({
+                    icon: 'trending-up',
+                    title: 'Tendencia actual',
+                    text,
                   });
                 }
               }
