@@ -647,26 +647,79 @@ export default function VoteScreen() {
                       <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                         {op.opcion_texto}
                       </Text>
-                      {isWinner && (
+                      {isWinner && encuesta.finalizada && (
                         <View style={styles.winnerBadge}>
                           <Text style={styles.winnerBadgeText}>{t('winner')}</Text>
                         </View>
                       )}
                     </View>
                   </View>
-                  {!showVoteUI && canShowResults && (
-                    <View style={styles.optionStats}>
-                      <View style={styles.barBg}>
-                        <View style={[styles.barFill, isWinner && styles.barFillWinner, { width: `${pct}%` }]} />
-                      </View>
-                      <Text style={[styles.voteCount, isWinner && styles.voteCountWinner]}>{op.total_votos} {op.total_votos !== 1 ? t('votes') : t('vote')}</Text>
-                    </View>
-                  )}
                 </View>
               </Pressable>
             );
           })}
         </View>
+
+        {!showVoteUI && (
+          <View style={styles.insightsContainer}>
+            {(() => {
+              const sorted = [...opciones].sort((a, b) => b.total_votos - a.total_votos);
+              const first = sorted[0];
+              const second = sorted[1];
+              const third = sorted[2];
+              const sinVotos = opciones.filter(o => o.total_votos === 0);
+              const cards: { icon: string; title: string; text: string }[] = [];
+
+              if (first && second && totalVotos > 0) {
+                const diffPct = Math.round(((first.total_votos - second.total_votos) / second.total_votos) * 100);
+                if (diffPct > 0) {
+                  cards.push({
+                    icon: 'trending-up',
+                    title: 'Tendencia actual',
+                    text: `La opción líder tiene un ${diffPct}% más de votos que el segundo lugar.`,
+                  });
+                }
+              }
+
+              if (sinVotos.length > 0) {
+                cards.push({
+                  icon: 'help-outline',
+                  title: 'Sin votos',
+                  text: `Actualmente hay ${sinVotos.length === 1 ? 'una opción que aún no ha recibido ningún voto' : `${sinVotos.length} opciones que aún no han recibido ningún voto`}.`,
+                });
+              }
+
+              if (first && third && third.total_votos > 0 && first.total_votos >= third.total_votos * 2) {
+                cards.push({
+                  icon: 'auto-awesome',
+                  title: 'Hito',
+                  text: `Una de las opciones ha duplicado o más los votos de la opción que va en tercer lugar.`,
+                });
+              } else if (first && second && second.total_votos > 0 && first.total_votos < second.total_votos * 1.5) {
+                cards.push({
+                  icon: 'whatshot',
+                  title: 'Reñido',
+                  text: `Las primeras opciones están muy cerca. Cualquier voto puede cambiar el resultado.`,
+                });
+              }
+
+              return cards.length > 0 ? (
+                <View style={styles.insightsInner}>
+                  <Text style={styles.insightsTitle}>Tendencias</Text>
+                  {cards.map((card, i) => (
+                    <View key={i} style={styles.insightCard}>
+                      <MaterialIcons name={card.icon as any} size={22} color="#1F6FEB" />
+                      <View style={styles.insightTextWrap}>
+                        <Text style={styles.insightCardTitle}>{card.title}</Text>
+                        <Text style={styles.insightCardText}>{card.text}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null;
+            })()}
+          </View>
+        )}
 
         {showVoteUI && (
           <Pressable
@@ -1110,6 +1163,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+  },
+  insightsContainer: {
+    marginBottom: 20,
+  },
+  insightsInner: {
+    gap: 10,
+  },
+  insightsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: '#FAFBFF',
+  },
+  insightTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  insightCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F6FEB',
+  },
+  insightCardText: {
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 18,
   },
   voteButton: {
     backgroundColor: '#1F6FEB',
