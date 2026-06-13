@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewProps } from 'react-native';
+import { StyleSheet, View, useColorScheme, type ViewProps } from 'react-native';
 import { BlurView } from 'expo-blur';
 
 type GlassTint = React.ComponentProps<typeof BlurView>['tint'];
@@ -10,7 +10,9 @@ type Props = ViewProps & {
   tint?: GlassTint;
 };
 
-export function GlassView({ children, intensity = 60, tint = 'systemChromeMaterial', style, ...props }: Props) {
+export function GlassView({ children, intensity = 60, tint: propTint, style, ...props }: Props) {
+  const colorScheme = useColorScheme();
+  const tint = propTint ?? (colorScheme === 'dark' ? 'dark' : 'systemChromeMaterial');
   return (
     <View style={[styles.container, style]} {...props}>
       <BlurView intensity={intensity} tint={tint} style={StyleSheet.absoluteFill} />

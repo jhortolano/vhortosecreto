@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Alert, Animated, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, FlatList, Pressable, StyleSheet, Text, TextInput, View, useColorScheme } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -13,6 +13,8 @@ import { savePushToken } from '@/lib/notifications';
 import { loadCache, saveCache } from '@/lib/encuestasCache';
 import { ensureImageDownloaded, deleteEncuestaImageCache, getEncuestaImagePath } from '@/lib/encuestaImage';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 import { GlassView } from '@/lib/GlassView';
 import { getUserId, getProfileWithCache } from '@/lib/offline';
 import { processQueue } from '@/lib/offlineQueue';
@@ -67,6 +69,8 @@ export default function GroupsScreen() {
   const [bottomMenuHeight, setBottomMenuHeight] = useState(0);
   const mountedRef = useRef(true);
   const loadingGruposRef = useRef(false);
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     router.setParams({ tab });
@@ -659,121 +663,125 @@ export default function GroupsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  customHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  headerLeft: { alignItems: 'center', gap: 2 },
-  headerNewBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1F6FEB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAppName: { fontSize: 9, color: '#999', letterSpacing: 0.3 },
-  headerSpacer: { height: 9 },
-  headerTabTitle: { fontSize: 28, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
-  newSurveyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#1F6FEB',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  newSurveySection: {
-    marginTop: 8,
-  },
-  bottomMenu: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  tabBarDivider: {
-    height: 1,
-    backgroundColor: '#C6C6C8',
-    marginHorizontal: 16,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    paddingTop: 6,
-    paddingBottom: 4,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  tabPill: {
-    position: 'absolute',
-    top: 6,
-    bottom: 6,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.78)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  newSurveyBtnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
-  search: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-  },
-  headerAvatar: { width: 36, height: 36, borderRadius: 18 },
-  headerAvatarPlaceholder: { backgroundColor: '#1F6FEB', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarInitial: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  helper: { color: '#666', textAlign: 'center', marginTop: 24 },
-  offlineBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFA000', paddingVertical: 6 },
-  offlineBannerText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
-  errorText: { color: '#C62828', textAlign: 'center', marginTop: 12, paddingHorizontal: 16 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 8, gap: 10, paddingTop: 4 },
-  card: { borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 12, padding: 14, backgroundColor: '#FAFAFA' },
-  cardUnread: { borderColor: '#1F6FEB', backgroundColor: '#EAF2FF' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center' },
-  cardAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  cardAvatarPlaceholder: { backgroundColor: '#1F6FEB', alignItems: 'center', justifyContent: 'center' },
-  cardAvatarInitial: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  cardTextWrap: { flex: 1 },
-  cardTitle: { fontSize: 17, fontWeight: '600' },
-  cardTitleUnread: { fontWeight: '800' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1F6FEB', marginLeft: 8 },
-  cardMeta: { color: '#666', fontSize: 13, marginTop: 2 },
-  empty: { textAlign: 'center', color: '#888', marginTop: 40, fontSize: 15 },
-  tabLabel: { fontSize: 12, fontWeight: '500', color: '#8E8E93', marginTop: 2 },
-  tabLabelActive: { color: '#007AFF', fontWeight: '600' },
-  tabIconWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
-  tabBadgeOver: { position: 'absolute', top: -6, right: -10, backgroundColor: '#1F6FEB', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  tabBadgeRed: { backgroundColor: '#C62828' },
-  tabBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
-  cardHeaderMain: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  grupoEncuestaBtn: { alignItems: 'center', justifyContent: 'center', paddingLeft: 12, paddingVertical: 4, minWidth: 56 },
-  grupoEncuestaLabel: { fontSize: 10, color: '#1F6FEB', marginTop: 2, fontWeight: '500' },
-  deleteAction: { backgroundColor: '#C62828', justifyContent: 'center', alignItems: 'center', width: 72, marginLeft: 8, borderRadius: 12 },
-  deleteActionText: { fontSize: 22 },
-});
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    customHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerLeft: { alignItems: 'center', gap: 2 },
+    headerNewBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.headerNewBtn,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerAppName: { fontSize: 9, color: colors.headerAppName, letterSpacing: 0.3 },
+    headerSpacer: { height: 9 },
+    headerTabTitle: { fontSize: 28, fontWeight: '700', flexShrink: 1, textAlign: 'center', color: colors.text },
+    newSurveyBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      marginHorizontal: 16,
+      marginBottom: 8,
+    },
+    newSurveySection: {
+      marginTop: 8,
+    },
+    bottomMenu: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+    },
+    tabBarDivider: {
+      height: 1,
+      backgroundColor: colors.tabDivider,
+      marginHorizontal: 16,
+    },
+    tabBar: {
+      flexDirection: 'row',
+      paddingTop: 6,
+      paddingBottom: 4,
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      paddingVertical: 6,
+      paddingHorizontal: 4,
+    },
+    tabPill: {
+      position: 'absolute',
+      top: 6,
+      bottom: 6,
+      borderRadius: 24,
+      backgroundColor: colors.tabPill,
+      borderWidth: 0.5,
+      borderColor: colors.tabPillBorder,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1.5 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
+    },
+    newSurveyBtnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
+    search: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.searchBorder,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 16,
+      color: colors.text,
+      backgroundColor: colors.background,
+    },
+    headerAvatar: { width: 36, height: 36, borderRadius: 18 },
+    headerAvatarPlaceholder: { backgroundColor: colors.headerAvatarPlaceholder, alignItems: 'center', justifyContent: 'center' },
+    headerAvatarInitial: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+    helper: { color: colors.textSecondary, textAlign: 'center', marginTop: 24 },
+    offlineBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.offlineBanner, paddingVertical: 6 },
+    offlineBannerText: { color: colors.offlineBannerText, fontSize: 12, fontWeight: '600' },
+    errorText: { color: colors.errorText, textAlign: 'center', marginTop: 12, paddingHorizontal: 16 },
+    listContent: { paddingHorizontal: 16, paddingBottom: 8, gap: 10, paddingTop: 4 },
+    card: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, backgroundColor: colors.cardBg },
+    cardUnread: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+    cardHeader: { flexDirection: 'row', alignItems: 'center' },
+    cardAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
+    cardAvatarPlaceholder: { backgroundColor: colors.headerAvatarPlaceholder, alignItems: 'center', justifyContent: 'center' },
+    cardAvatarInitial: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+    cardTextWrap: { flex: 1 },
+    cardTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
+    cardTitleUnread: { fontWeight: '800' },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.unreadDot, marginLeft: 8 },
+    cardMeta: { color: colors.textSecondary, fontSize: 13, marginTop: 2 },
+    empty: { textAlign: 'center', color: colors.textTertiary, marginTop: 40, fontSize: 15 },
+    tabLabel: { fontSize: 12, fontWeight: '500', color: colors.tabInactive, marginTop: 2 },
+    tabLabelActive: { color: colors.tabActive, fontWeight: '600' },
+    tabIconWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+    tabBadgeOver: { position: 'absolute', top: -6, right: -10, backgroundColor: colors.primary, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+    tabBadgeRed: { backgroundColor: colors.badgeRed },
+    tabBadgeText: { color: colors.badgeText, fontSize: 11, fontWeight: '700' },
+    cardHeaderMain: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    grupoEncuestaBtn: { alignItems: 'center', justifyContent: 'center', paddingLeft: 12, paddingVertical: 4, minWidth: 56 },
+    grupoEncuestaLabel: { fontSize: 10, color: colors.primary, marginTop: 2, fontWeight: '500' },
+    deleteAction: { backgroundColor: colors.deleteBg, justifyContent: 'center', alignItems: 'center', width: 72, marginLeft: 8, borderRadius: 12 },
+    deleteActionText: { fontSize: 22 },
+  });
+}

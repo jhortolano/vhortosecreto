@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet, useColorScheme } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -27,6 +27,7 @@ const backToHomeOptions = {
 
 export default function RootLayout() {
   const { t } = useT();
+  const colorScheme = useColorScheme();
   const [versionBlocked, setVersionBlocked] = useState(false);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function RootLayout() {
         <Stack.Screen name="update-required" options={{ headerShown: false }} />
         <Stack.Screen name="open/[linkUuid]" options={{ headerShown: false }} />
       </Stack>
-      <StatusBar style="dark" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       </CreateEncuestaProvider>
     </GestureHandlerRootView>
   );
