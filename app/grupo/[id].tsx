@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
@@ -7,6 +7,8 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { normalizeContactPhone } from '@/lib/phoneNormalize';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 
 type Miembro = {
   phone: string;
@@ -17,6 +19,8 @@ type Miembro = {
 export default function GrupoDetailScreen() {
   const { t } = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [nombre, setNombre] = useState('');
   const [imagenUrl, setImagenUrl] = useState<string | null>(null);
   const [miembros, setMiembros] = useState<Miembro[]>([]);
@@ -175,28 +179,30 @@ export default function GrupoDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   centered: { justifyContent: 'center', alignItems: 'center' },
-  header: { alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  header: { alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background },
   headerImage: { width: 72, height: 72, borderRadius: 36, marginBottom: 8 },
-  headerPlaceholder: { backgroundColor: '#1F6FEB', alignItems: 'center', justifyContent: 'center' },
+  headerPlaceholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   headerInitial: { color: '#FFF', fontSize: 28, fontWeight: '700' },
-  headerTitle: { fontSize: 20, fontWeight: '700' },
-  headerCount: { fontSize: 14, color: '#666', marginTop: 2 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+  headerCount: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
   list: { padding: 16, gap: 10 },
-  miembroRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 12, padding: 12, backgroundColor: '#FAFAFA' },
+  miembroRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, backgroundColor: colors.cardBg },
   miembroAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  miembroAvatarPlaceholder: { backgroundColor: '#1F6FEB', alignItems: 'center', justifyContent: 'center' },
+  miembroAvatarPlaceholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   miembroAvatarInitial: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   miembroText: { flex: 1 },
-  miembroNombre: { fontSize: 16, fontWeight: '600' },
-  miembroPhone: { fontSize: 13, color: '#888', marginTop: 2 },
+  miembroNombre: { fontSize: 16, fontWeight: '600', color: colors.text },
+  miembroPhone: { fontSize: 13, color: colors.textTertiary, marginTop: 2 },
   deleteBtn: { padding: 8 },
   deleteBtnText: { fontSize: 20 },
-  actions: { padding: 16, gap: 10, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
-  addBtn: { backgroundColor: '#1F6FEB', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  actions: { padding: 16, gap: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
+  addBtn: { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   addBtnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
-  deleteGroupBtn: { borderWidth: 1, borderColor: '#C62828', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  deleteGroupBtnText: { color: '#C62828', fontWeight: '600', fontSize: 16 },
-});
+  deleteGroupBtn: { borderWidth: 1, borderColor: colors.danger, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  deleteGroupBtnText: { color: colors.danger, fontWeight: '600', fontSize: 16 },
+  });
+}

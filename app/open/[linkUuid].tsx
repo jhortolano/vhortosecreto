@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
@@ -9,6 +11,8 @@ import { ensureImageDownloaded } from '@/lib/encuestaImage';
 export default function OpenVoteScreen() {
   const { t } = useT();
   const { linkUuid } = useLocalSearchParams<{ linkUuid: string }>();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -90,29 +94,31 @@ export default function OpenVoteScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 16,
   },
   errorIcon: {
     fontSize: 48,
     fontWeight: '700',
-    color: '#C62828',
+    color: colors.errorText,
     marginBottom: 16,
   },
   errorText: {
     fontSize: 17,
-    color: '#C62828',
+    color: colors.errorText,
     textAlign: 'center',
     lineHeight: 24,
   },
-});
+  });
+}

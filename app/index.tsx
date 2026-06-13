@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   InputAccessoryView,
@@ -21,6 +21,8 @@ import { supabase } from '@/lib/supabase';
 import { savePushToken } from '@/lib/notifications';
 import { useT } from '@/lib/i18n';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,6 +33,8 @@ const OTP_ACCESSORY_ID = 'loginOtpAccessory';
 export default function LoginScreen() {
   const headerHeight = useHeaderHeight();
   const { t } = useT();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -479,10 +483,11 @@ function friendlyAuthError(error: { message: string; status?: number }): string 
   return msg;
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -498,7 +503,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   centered: {
     justifyContent: 'center',
@@ -509,24 +514,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
+    color: colors.text,
   },
   subtitle: {
     fontSize: 16,
-    color: '#555555',
+    color: colors.textSection,
     textAlign: 'center',
     marginBottom: 24,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: colors.borderLight,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 16,
+    color: colors.text,
+    backgroundColor: colors.background,
   },
   button: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -547,11 +555,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#DDD',
+    backgroundColor: colors.borderLight,
   },
   dividerText: {
     marginHorizontal: 12,
-    color: '#888',
+    color: colors.textTertiary,
     fontSize: 14,
   },
   googleButton: {
@@ -589,7 +597,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 12,
-    color: '#C62828',
+    color: colors.errorText,
     textAlign: 'center',
   },
   accessory: {
@@ -605,6 +613,7 @@ const styles = StyleSheet.create({
   accessoryDone: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.tabActive,
   },
-});
+  });
+}

@@ -11,8 +11,10 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 import { checkOnline } from '@/lib/offline';
 import { randomUUID } from 'expo-crypto';
 import {
@@ -34,6 +36,8 @@ const MAX_OPTIONS = 15;
 export default function CreateEncuestaFormScreen() {
   const { t } = useT();
   const headerHeight = useHeaderHeight();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { selected, setFormData, formData, clear } = useCreateEncuesta();
   const [titulo, setTitulo] = useState(formData.titulo);
   const [opciones, setOpciones] = useState<string[]>(formData.opciones.length > 1 ? formData.opciones : ['', '']);
@@ -570,19 +574,22 @@ export default function CreateEncuestaFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFFFFF' },
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingBottom: 120 },
-  meta: { color: '#555', marginBottom: 16, fontSize: 14 },
-  label: { fontWeight: '600', marginBottom: 6, color: '#333' },
+  meta: { color: colors.textSecondary, marginBottom: 16, fontSize: 14 },
+  label: { fontWeight: '600', marginBottom: 6, color: colors.profileLabel },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 14,
+    color: colors.profileInputText,
+    backgroundColor: colors.profileInputBg,
   },
   optionBlock: { marginBottom: 4 },
   rowBtns: { flexDirection: 'row', gap: 12, marginBottom: 20 },
@@ -590,25 +597,25 @@ const styles = StyleSheet.create({
     width: 52,
     height: 48,
     borderRadius: 10,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colors.barBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   smallBtnDisabled: { opacity: 0.4 },
-  smallBtnText: { fontSize: 24, fontWeight: '600', color: '#222' },
+  smallBtnText: { fontSize: 24, fontWeight: '600', color: colors.text },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 12 },
   box: {
     width: 22,
     height: 22,
     borderWidth: 2,
-    borderColor: '#888',
+    borderColor: colors.radioBorder,
     borderRadius: 4,
   },
-  boxOn: { backgroundColor: '#1F6FEB', borderColor: '#1F6FEB' },
-  checkboxLabel: { fontSize: 16, flex: 1 },
-  error: { color: '#C62828', marginBottom: 12 },
+  boxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxLabel: { fontSize: 16, flex: 1, color: colors.text },
+  error: { color: colors.errorText, marginBottom: 12 },
   primaryFull: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -616,7 +623,7 @@ const styles = StyleSheet.create({
   },
   primaryDisabled: { opacity: 0.6 },
   primaryText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
-  secondaryText: { color: '#1F6FEB', fontWeight: '600', fontSize: 14 },
+  secondaryText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
   cancelBtn: {
     alignItems: 'center',
     paddingVertical: 14,
@@ -631,17 +638,17 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   overlayBox: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.background,
     borderRadius: 16,
     paddingVertical: 32,
     paddingHorizontal: 40,
     alignItems: 'center',
     gap: 16,
   },
-  overlayText: { fontSize: 16, fontWeight: '600', color: '#333' },
+  overlayText: { fontSize: 16, fontWeight: '600', color: colors.text },
   imagePickerBtn: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     padding: 12,
     marginBottom: 14,
@@ -649,17 +656,17 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignSelf: 'stretch',
   },
-  imagePickerText: { color: '#1F6FEB', fontWeight: '600', fontSize: 14 },
+  imagePickerText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
   imagePreviewWrap: { alignItems: 'center', gap: 6, width: '100%' },
-  imagePreview: { width: '100%', height: 180, borderRadius: 8, backgroundColor: '#F0F0F0' },
-  imageRemoveText: { color: '#C62828', fontWeight: '600', fontSize: 13 },
+  imagePreview: { width: '100%', height: 180, borderRadius: 8, backgroundColor: colors.barBg },
+  imageRemoveText: { color: colors.danger, fontWeight: '600', fontSize: 13 },
   uploadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  uploadingText: { color: '#888', fontSize: 13 },
+  uploadingText: { color: colors.textTertiary, fontSize: 13 },
   privacySection: { marginBottom: 24 },
   segmentedControl: {
     flexDirection: 'row',
     marginTop: 8,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.barBg,
     borderRadius: 24,
     padding: 3,
   },
@@ -672,8 +679,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 22,
   },
-  segmentSelected: { backgroundColor: '#1F6FEB' },
-  segmentText: { fontSize: 15, fontWeight: '600', color: '#999' },
+  segmentSelected: { backgroundColor: colors.primary },
+  segmentText: { fontSize: 15, fontWeight: '600', color: colors.textTertiary },
   segmentTextSelected: { color: '#FFF' },
   infoRow: {
     flexDirection: 'row',
@@ -685,4 +692,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 4,
   },
-});
+  });
+}

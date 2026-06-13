@@ -1,11 +1,14 @@
-import { Pressable, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet, useColorScheme } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useT } from '@/lib/i18n';
+import { lightColors, darkColors } from '@/constants/colors';
 
 function BackToHome() {
+  const colorScheme = useColorScheme();
+  const colors = colorScheme === 'dark' ? darkColors : lightColors;
   return (
     <Pressable onPress={() => router.push('/groups')} style={backStyles.btn}>
-      <Text style={backStyles.arrow}>←</Text>
+      <Text style={[backStyles.arrow, { color: colors.backArrow }]}>←</Text>
     </Pressable>
   );
 }
@@ -26,5 +29,5 @@ export default function CreateEncuestaLayout() {
 
 const backStyles = StyleSheet.create({
   btn: { paddingHorizontal: 4, paddingVertical: 8 },
-  arrow: { fontSize: 24, color: '#1F6FEB' },
+  arrow: { fontSize: 24 },
 });

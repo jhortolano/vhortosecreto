@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image as RNImage, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -15,6 +15,8 @@ import { getDetailCache, setDetailCache } from '@/lib/encuestaDetailCache';
 import { getUserId } from '@/lib/offline';
 import { addToQueue } from '@/lib/offlineQueue';
 import QrDisplay from '@/lib/QrDisplay';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 
 type Encuesta = {
   id: string;
@@ -45,6 +47,8 @@ type Votante = {
 export default function VoteScreen() {
   const { t } = useT();
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [encuesta, setEncuesta] = useState<Encuesta | null>(null);
   const [opciones, setOpciones] = useState<Opcion[]>([]);
   const [haVotado, setHaVotado] = useState(false);
@@ -1051,11 +1055,12 @@ export default function VoteScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   centered: {
     justifyContent: 'center',
@@ -1063,10 +1068,11 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
+    backgroundColor: colors.scrollBg,
   },
   helper: {
     marginTop: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
   headerRow: {
     flexDirection: 'row',
@@ -1079,9 +1085,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
     marginRight: 8,
+    color: colors.text,
   },
   meta: {
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 16,
     fontSize: 14,
   },
@@ -1094,29 +1101,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   statusOpen: {
-    color: '#0F8A3E',
-    backgroundColor: '#E6F7EC',
+    color: colors.success,
+    backgroundColor: colors.successLight,
   },
   statusClosed: {
-    color: '#C62828',
-    backgroundColor: '#FFEBEE',
+    color: colors.danger,
+    backgroundColor: colors.dangerLight,
   },
   votedNotice: {
-    color: '#1F6FEB',
+    color: colors.primary,
     fontWeight: '600',
     marginBottom: 12,
     fontSize: 14,
   },
   hiddenNotice: {
-    backgroundColor: '#FFF4E5',
+    backgroundColor: colors.warningLight,
     borderWidth: 1,
-    borderColor: '#FFA000',
+    borderColor: colors.hiddenNotice,
     borderRadius: 10,
     padding: 14,
     marginBottom: 12,
   },
   hiddenNoticeText: {
-    color: '#8D6E00',
+    color: colors.hiddenNoticeText,
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
@@ -1127,25 +1134,25 @@ const styles = StyleSheet.create({
   },
   option: {
     borderWidth: 1,
-    borderColor: '#D9D9D9',
+    borderColor: colors.borderOption,
     borderRadius: 10,
     padding: 14,
   },
   optionDisabled: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.disabledBg,
     opacity: 0.75,
   },
   optionPressable: {
-    borderColor: '#1F6FEB',
+    borderColor: colors.primary,
   },
   optionSelected: {
-    borderColor: '#1F6FEB',
-    backgroundColor: '#EAF2FF',
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   optionWinner: {
-    borderColor: '#0F8A3E',
+    borderColor: colors.winnerBorder,
     borderWidth: 2,
-    backgroundColor: '#F0FFF4',
+    backgroundColor: colors.winnerBg,
   },
   optionContent: {
     gap: 8,
@@ -1166,30 +1173,30 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#888',
+    borderColor: colors.radioBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioSelected: {
-    borderColor: '#1F6FEB',
+    borderColor: colors.primary,
   },
   radioDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.primary,
   },
   optionText: {
     fontSize: 16,
-    color: '#222',
+    color: colors.text,
     flex: 1,
   },
   optionTextSelected: {
-    color: '#1244A8',
+    color: colors.optionSelectedText,
     fontWeight: '600',
   },
   optionTextDisabled: {
-    color: '#999',
+    color: colors.textMuted,
   },
   optionStats: {
     flexDirection: 'row',
@@ -1199,36 +1206,36 @@ const styles = StyleSheet.create({
   barBg: {
     flex: 1,
     height: 6,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colors.barBg,
     borderRadius: 3,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   barFillWinner: {
-    backgroundColor: '#0F8A3E',
+    backgroundColor: colors.success,
   },
   voteCount: {
     fontSize: 12,
-    color: '#888',
+    color: colors.textTertiary,
     minWidth: 50,
     textAlign: 'right',
   },
   voteCountWinner: {
-    color: '#0F8A3E',
+    color: colors.optionWinnerText,
     fontWeight: '700',
   },
   winnerBadge: {
-    backgroundColor: '#0F8A3E',
+    backgroundColor: colors.success,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   winnerBadgeText: {
-    color: '#FFFFFF',
+    color: colors.winnerBadgeText,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -1239,9 +1246,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: '#FFF4E5',
+    backgroundColor: colors.warningLight,
     borderWidth: 1,
-    borderColor: '#FFA000',
+    borderColor: colors.openBannerBorder,
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
@@ -1249,7 +1256,7 @@ const styles = StyleSheet.create({
   openOwnerBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#8D6E00',
+    color: colors.openBannerText,
     lineHeight: 18,
     fontWeight: '500',
   },
@@ -1259,7 +1266,7 @@ const styles = StyleSheet.create({
   insightsTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: colors.title,
     marginBottom: 4,
   },
   insightCard: {
@@ -1267,10 +1274,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.insightCardBorder,
     borderRadius: 14,
     padding: 14,
-    backgroundColor: '#FAFBFF',
+    backgroundColor: colors.insightCardBg,
   },
   insightTextWrap: {
     flex: 1,
@@ -1279,15 +1286,15 @@ const styles = StyleSheet.create({
   insightCardTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1F6FEB',
+    color: colors.insightCardTitle,
   },
   insightCardText: {
     fontSize: 13,
-    color: '#555',
+    color: colors.insightCardText,
     lineHeight: 18,
   },
   voteButton: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.voteButton,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -1296,7 +1303,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   voteButtonText: {
-    color: '#FFFFFF',
+    color: colors.voteButtonText,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -1312,7 +1319,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#1B5E20',
+    backgroundColor: colors.toastBg,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -1323,18 +1330,18 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   toastText: {
-    color: '#FFF',
+    color: colors.toastText,
     fontWeight: '600',
     fontSize: 16,
   },
   errorText: {
     marginTop: 12,
-    color: '#C62828',
+    color: colors.errorText,
     fontWeight: '600',
     textAlign: 'center',
   },
   errorMessage: {
-    color: '#C62828',
+    color: colors.errorText,
     fontSize: 16,
   },
   shareLinkRow: {
@@ -1351,13 +1358,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderWidth: 1,
-    borderColor: '#1F6FEB',
+    borderColor: colors.linkBtnBorder,
     borderRadius: 10,
   },
   shareLinkBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1F6FEB',
+    color: colors.linkBtnText,
   },
   votantesToggle: {
     flexDirection: 'row',
@@ -1366,26 +1373,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#D9D9D9',
+    borderColor: colors.borderOption,
     borderRadius: 10,
     marginBottom: 12,
   },
   votantesToggleText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F6FEB',
+    color: colors.voterToggle,
   },
   votantesArrow: {
     fontSize: 12,
-    color: '#1F6FEB',
+    color: colors.voterToggle,
   },
   votantesList: {
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.cardBg,
     gap: 6,
   },
   votantesRow: {
@@ -1399,66 +1406,66 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   votantesAvatarPlaceholder: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.voterAvatarBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   votantesAvatarInitial: {
-    color: '#FFF',
+    color: colors.voterAvatarInitial,
     fontSize: 16,
     fontWeight: '700',
   },
   votantesNick: {
     fontSize: 15,
-    color: '#222',
+    color: colors.voterName,
   },
   votantesLoading: {
-    color: '#888',
+    color: colors.voterLoading,
     fontSize: 14,
     textAlign: 'center',
   },
   votantesEmpty: {
-    color: '#888',
+    color: colors.voterEmpty,
     fontSize: 14,
     textAlign: 'center',
   },
   votantesSectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#555',
+    color: colors.voterSection,
     marginTop: 8,
     marginBottom: 4,
   },
   leaveButton: {
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#FFA000',
+    borderColor: colors.warning,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   leaveButtonText: {
-    color: '#FFA000',
+    color: colors.warning,
     fontWeight: '600',
     fontSize: 16,
   },
   finalizeButton: {
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#0F8A3E',
+    borderColor: colors.success,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   finalizeButtonText: {
-    color: '#0F8A3E',
+    color: colors.success,
     fontWeight: '600',
     fontSize: 16,
   },
   finalizadaDeleteButton: {
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#C62828',
+    borderColor: colors.danger,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1467,7 +1474,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   finalizadaDeleteButtonText: {
-    color: '#C62828',
+    color: colors.danger,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -1477,31 +1484,31 @@ const styles = StyleSheet.create({
   confirmationTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#0F8A3E',
+    color: colors.confirmIcon,
     marginBottom: 16,
     textAlign: 'center',
   },
   confirmationVoted: {
     fontSize: 16,
-    color: '#222',
+    color: colors.confirmText,
     textAlign: 'center',
     marginBottom: 12,
   },
   confirmationSecret: {
     fontSize: 14,
-    color: '#888',
+    color: colors.confirmSecret,
     textAlign: 'center',
     fontStyle: 'italic',
     marginBottom: 32,
   },
   confirmationCloseBtn: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.confirmCloseBtn,
     paddingVertical: 14,
     paddingHorizontal: 48,
     borderRadius: 10,
   },
   confirmationCloseBtnText: {
-    color: '#FFF',
+    color: colors.confirmCloseBtnText,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -1526,7 +1533,7 @@ const styles = StyleSheet.create({
   qrModalText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.title,
     textAlign: 'center',
   },
   encuestaImage: {
@@ -1540,14 +1547,14 @@ const styles = StyleSheet.create({
     minHeight: 120,
     borderRadius: 10,
     marginBottom: 12,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: colors.disabledBg,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   imageErrorText: {
     fontSize: 13,
-    color: '#999',
+    color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 16,
   },
@@ -1556,9 +1563,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reportButtonText: {
-    color: '#999',
+    color: colors.textMuted,
     fontWeight: '400',
     fontSize: 12,
     textDecorationLine: 'underline',
   },
-});
+  });
+}

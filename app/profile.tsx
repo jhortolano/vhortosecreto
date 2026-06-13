@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,9 +18,13 @@ import { fetchProfile } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatarFromUri } from '@/lib/uploadAvatar';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 
 export default function ProfileScreen() {
   const { t } = useT();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [nick, setNick] = useState('');
@@ -316,12 +320,13 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { flexGrow: 1 },
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+  scroll: { flexGrow: 1, backgroundColor: colors.profileBg },
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.profileBg,
   },
   centered: {
     justifyContent: 'center',
@@ -337,41 +342,43 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   avatarPlaceholder: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.voterAvatarBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
-    color: '#FFF',
+    color: colors.voterAvatarInitial,
     fontSize: 32,
     fontWeight: '700',
   },
   avatarHint: {
     marginTop: 8,
-    color: '#1F6FEB',
+    color: colors.primary,
     fontSize: 14,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
-    color: '#333',
+    color: colors.profileLabel,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 14,
+    color: colors.profileInputText,
+    backgroundColor: colors.profileInputBg,
   },
   inputDisabled: {
-    backgroundColor: '#F5F5F5',
-    color: '#666',
+    backgroundColor: colors.disabledBg,
+    color: colors.textSecondary,
   },
   saveButton: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.profileBtn,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -381,31 +388,31 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFF',
+    color: colors.profileBtnText,
     fontSize: 16,
     fontWeight: '600',
   },
   successText: {
     marginTop: 14,
-    color: '#0F8A3E',
+    color: colors.success,
     fontWeight: '600',
     textAlign: 'center',
   },
   errorText: {
     marginTop: 14,
-    color: '#C62828',
+    color: colors.errorText,
     textAlign: 'center',
   },
   logoutButton: {
     marginTop: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#C62828',
+    borderColor: colors.profileDanger,
     borderRadius: 10,
     paddingVertical: 14,
   },
   logoutText: {
-    color: '#C62828',
+    color: colors.profileDanger,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -415,16 +422,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   deleteAccountText: {
-    color: '#999',
+    color: colors.textMuted,
     fontWeight: '400',
     fontSize: 14,
     textDecorationLine: 'underline',
   },
   versionText: {
     textAlign: 'center',
-    color: '#BBB',
+    color: colors.textMuted,
     fontSize: 12,
     marginTop: 32,
     marginBottom: 8,
   },
-});
+  });
+}

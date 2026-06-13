@@ -1,14 +1,19 @@
+import { useMemo } from 'react';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useT } from '@/lib/i18n';
 import { Share, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Clipboard from 'expo-clipboard';
 import QrDisplay from '@/lib/QrDisplay';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 
 export default function ShareScreen() {
   const { t } = useT();
   const { width } = useWindowDimensions();
   const { linkUuid, titulo } = useLocalSearchParams<{ linkUuid: string; titulo: string }>();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const deepLink = `https://vhortosecreto.vercel.app/open/${linkUuid}`;
   const qrSize = Math.min(width - 80, 240);
 
@@ -54,17 +59,18 @@ export default function ShareScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
   qrWrap: {
     padding: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.background,
     borderRadius: 16,
     marginBottom: 24,
     elevation: 2,
@@ -73,14 +79,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  title: { fontSize: 22, fontWeight: '700', color: '#222', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 24, lineHeight: 22 },
+  title: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 22 },
   copyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#555',
+    backgroundColor: colors.textSection,
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -93,7 +99,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -102,5 +108,6 @@ const styles = StyleSheet.create({
   },
   shareBtnText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   homeBtn: { paddingVertical: 14 },
-  homeBtnText: { color: '#1F6FEB', fontWeight: '600', fontSize: 15 },
-});
+  homeBtnText: { color: colors.primary, fontWeight: '600', fontSize: 15 },
+  });
+}

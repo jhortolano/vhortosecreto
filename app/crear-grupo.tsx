@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,8 @@ import { router } from 'expo-router';
 import { normalizeContactPhone } from '@/lib/phoneNormalize';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 import { checkOnline } from '@/lib/offline';
 
 type ContactPick = {
@@ -32,6 +34,8 @@ type ContactPick = {
 export default function CrearGrupoScreen() {
   const { t } = useT();
   const headerHeight = useHeaderHeight();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [step, setStep] = useState<'nombre' | 'miembros' | 'imagen'>('nombre');
   const [nombre, setNombre] = useState('');
   const [selected, setSelected] = useState<ContactPick[]>([]);
@@ -251,32 +255,34 @@ export default function CrearGrupoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFF' },
-  scroll: { flexGrow: 1 },
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.background },
+  scroll: { flexGrow: 1, backgroundColor: colors.background },
   container: { flex: 1, padding: 20 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, marginBottom: 16 },
-  count: { color: '#555', marginBottom: 8 },
-  search: { borderWidth: 1, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 8 },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 16, color: colors.text },
+  input: { borderWidth: 1, borderColor: colors.profileInputBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, marginBottom: 16, color: colors.profileInputText, backgroundColor: colors.profileInputBg },
+  count: { color: colors.textSecondary, marginBottom: 8 },
+  search: { borderWidth: 1, borderColor: colors.profileInputBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 8, color: colors.profileInputText, backgroundColor: colors.profileInputBg },
   list: { paddingBottom: 100 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E5E5E5', marginBottom: 8, backgroundColor: '#FAFAFA' },
-  rowSel: { borderColor: '#1F6FEB', backgroundColor: '#EAF2FF' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, marginBottom: 8, backgroundColor: colors.cardBg },
+  rowSel: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   rowText: { flex: 1 },
-  rowName: { fontSize: 16, fontWeight: '600' },
-  rowPhone: { fontSize: 14, color: '#666', marginTop: 2 },
-  check: { fontSize: 20, color: '#1F6FEB', width: 28, textAlign: 'right' },
-  empty: { textAlign: 'center', color: '#888', marginTop: 24 },
-  error: { color: '#C62828', marginBottom: 12 },
-  primary: { borderRadius: 10, paddingVertical: 14, alignItems: 'center', backgroundColor: '#1F6FEB' },
+  rowName: { fontSize: 16, fontWeight: '600', color: colors.text },
+  rowPhone: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+  check: { fontSize: 20, color: colors.primary, width: 28, textAlign: 'right' },
+  empty: { textAlign: 'center', color: colors.textTertiary, marginTop: 24 },
+  error: { color: colors.errorText, marginBottom: 12 },
+  primary: { borderRadius: 10, paddingVertical: 14, alignItems: 'center', backgroundColor: colors.primary },
   primaryText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   secondary: { borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  secondaryText: { color: '#1F6FEB', fontWeight: '600', fontSize: 16 },
-  footer: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E0E0E0' },
+  secondaryText: { color: colors.primary, fontWeight: '600', fontSize: 16 },
+  footer: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.background },
   imagePicker: { alignItems: 'center', marginBottom: 20 },
   previewImage: { width: 120, height: 120, borderRadius: 60 },
-  imagePlaceholder: { backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#CCC', borderStyle: 'dashed' },
-  imagePlaceholderText: { fontSize: 40, color: '#888' },
-  resumenTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
-  resumenCount: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 20 },
-});
+  imagePlaceholder: { backgroundColor: colors.barBg, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.borderOption, borderStyle: 'dashed' },
+  imagePlaceholderText: { fontSize: 40, color: colors.textTertiary },
+  resumenTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 4, color: colors.text },
+  resumenCount: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: 20 },
+  });
+}

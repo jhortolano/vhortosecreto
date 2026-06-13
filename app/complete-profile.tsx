@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,11 +21,15 @@ import { savePushToken } from '@/lib/notifications';
 import { uploadAvatarFromUri } from '@/lib/uploadAvatar';
 import { countries, findCountryByDial, type Country } from '@/lib/countries';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 import { getUserId, getProfileWithCache } from '@/lib/offline';
 import { loadCache } from '@/lib/encuestasCache';
 
 export default function CompleteProfileScreen() {
   const { t } = useT();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [nick, setNick] = useState('');
@@ -449,12 +453,13 @@ export default function CompleteProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  scrollContent: { flexGrow: 1 },
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+  scrollContent: { flexGrow: 1, backgroundColor: colors.background },
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   centered: {
     justifyContent: 'center',
@@ -462,16 +467,17 @@ const styles = StyleSheet.create({
   },
   helper: {
     marginTop: 12,
-    color: '#666666',
+    color: colors.textSecondary,
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
     marginBottom: 8,
+    color: colors.text,
   },
   subtitle: {
     fontSize: 15,
-    color: '#555555',
+    color: colors.textSection,
     marginBottom: 20,
     lineHeight: 22,
   },
@@ -479,20 +485,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
-    color: '#333333',
+    color: colors.profileLabel,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 14,
+    color: colors.profileInputText,
+    backgroundColor: colors.profileInputBg,
   },
   inputDisabled: {
-    backgroundColor: '#F5F5F5',
-    color: '#666666',
+    backgroundColor: colors.disabledBg,
+    color: colors.textSecondary,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -503,7 +511,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -515,20 +523,22 @@ const styles = StyleSheet.create({
   countryDial: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#222',
+    color: colors.text,
   },
   countryArrow: {
     fontSize: 10,
-    color: '#888',
+    color: colors.textTertiary,
   },
   phoneInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
+    color: colors.profileInputText,
+    backgroundColor: colors.profileInputBg,
   },
   modalOverlay: {
     flex: 1,
@@ -536,7 +546,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 40,
@@ -549,20 +559,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
+    color: colors.text,
   },
   modalClose: {
     fontSize: 16,
-    color: '#1F6FEB',
+    color: colors.primary,
     fontWeight: '600',
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     marginHorizontal: 20,
     marginTop: 12,
@@ -570,6 +581,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
+    color: colors.profileInputText,
+    backgroundColor: colors.profileInputBg,
   },
   countryItem: {
     flexDirection: 'row',
@@ -579,7 +592,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   countryItemActive: {
-    backgroundColor: '#F0F7FF',
+    backgroundColor: colors.primaryLight,
   },
   countryItemFlag: {
     fontSize: 26,
@@ -587,23 +600,23 @@ const styles = StyleSheet.create({
   countryItemName: {
     flex: 1,
     fontSize: 16,
-    color: '#222',
+    color: colors.text,
   },
   countryItemDial: {
     fontSize: 16,
-    color: '#888',
+    color: colors.textTertiary,
     fontWeight: '600',
   },
   pickButton: {
     borderWidth: 1,
-    borderColor: '#1F6FEB',
+    borderColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 12,
   },
   pickButtonText: {
-    color: '#1F6FEB',
+    color: colors.primary,
     fontWeight: '600',
     fontSize: 16,
   },
@@ -615,7 +628,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#EEEEEE',
+    backgroundColor: colors.barBg,
   },
   consentSection: {
     marginVertical: 12,
@@ -628,11 +641,11 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: colors.text,
     lineHeight: 22,
   },
   checkboxLink: {
-    color: '#1F6FEB',
+    color: colors.primary,
     textDecorationLine: 'underline',
   },
   termsToggle: {
@@ -644,43 +657,43 @@ const styles = StyleSheet.create({
   },
   termsToggleText: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textTertiary,
   },
   termsToggleArrow: {
     fontSize: 10,
-    color: '#888',
+    color: colors.textTertiary,
   },
   termsInfo: {
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 14,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.cardBg,
     marginTop: 8,
   },
   termsBody: {
     fontSize: 13,
-    color: '#555',
+    color: colors.textSecondary,
     lineHeight: 20,
   },
   termsBold: {
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
   },
   termsLink: {
-    color: '#1F6FEB',
+    color: colors.primary,
     textDecorationLine: 'underline',
   },
   contentPolicyTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#333',
+    color: colors.text,
     marginTop: 16,
     lineHeight: 20,
   },
   contentPolicyBody: {
     fontSize: 13,
-    color: '#555',
+    color: colors.textSecondary,
     lineHeight: 20,
     marginTop: 8,
   },
@@ -690,7 +703,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   privacyModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
@@ -703,15 +716,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: colors.border,
   },
   privacyModalTitle: {
     fontSize: 18,
     fontWeight: '700',
+    color: colors.text,
   },
   privacyModalClose: {
     fontSize: 16,
-    color: '#1F6FEB',
+    color: colors.primary,
     fontWeight: '600',
   },
   privacyModalScroll: {
@@ -720,24 +734,24 @@ const styles = StyleSheet.create({
   },
   privacyModalSubText: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textTertiary,
     marginBottom: 8,
   },
   privacyModalBody: {
     fontSize: 14,
-    color: '#333',
+    color: colors.text,
     lineHeight: 22,
   },
   privacyModalBold: {
     fontWeight: '700',
-    color: '#222',
+    color: colors.text,
   },
   privacyLink: {
-    color: '#1F6FEB',
+    color: colors.primary,
     textDecorationLine: 'underline',
   },
   button: {
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.profileBtn,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -747,7 +761,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.profileBtnText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -756,12 +770,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryText: {
-    color: '#1F6FEB',
+    color: colors.primary,
     fontWeight: '600',
   },
   errorText: {
     marginTop: 14,
-    color: '#C62828',
+    color: colors.errorText,
     textAlign: 'center',
   },
-});
+  });
+}

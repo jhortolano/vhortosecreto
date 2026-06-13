@@ -24,6 +24,8 @@ import { loadCache, saveCache } from '@/lib/encuestasCache';
 import { setDetailCache } from '@/lib/encuestaDetailCache';
 import { fetchProfile } from '@/lib/profile';
 import { useT } from '@/lib/i18n';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { lightColors } from '@/constants/colors';
 import { checkOnline } from '@/lib/offline';
 
 type Row = EncuestaContactPick;
@@ -31,6 +33,8 @@ type Row = EncuestaContactPick;
 export default function CreateEncuestaContactsScreen() {
   const { t } = useT();
   const headerHeight = useHeaderHeight();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { selected, toggle, formData, clear } = useCreateEncuesta();
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
@@ -358,20 +362,23 @@ export default function CreateEncuestaContactsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  hint: { paddingHorizontal: 16, paddingTop: 8, color: '#555', fontSize: 14 },
-  count: { paddingHorizontal: 16, paddingVertical: 6, fontWeight: '600', color: '#222' },
+function createStyles(colors: typeof lightColors) {
+  return StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background },
+  hint: { paddingHorizontal: 16, paddingTop: 8, color: colors.textSecondary, fontSize: 14 },
+  count: { paddingHorizontal: 16, paddingVertical: 6, fontWeight: '600', color: colors.text },
   search: {
     marginHorizontal: 16,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: colors.profileInputBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+    color: colors.profileInputText,
+    backgroundColor: colors.profileInputBg,
   },
   loader: { marginTop: 24 },
   listContent: { paddingHorizontal: 16, paddingBottom: 100 },
@@ -382,28 +389,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.border,
     marginBottom: 8,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.cardBg,
   },
-  rowSelected: { borderColor: '#1F6FEB', backgroundColor: '#EAF2FF' },
+  rowSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   rowText: { flex: 1 },
-  rowName: { fontSize: 16, fontWeight: '600' },
-  rowPhone: { fontSize: 14, color: '#666', marginTop: 2 },
-  check: { fontSize: 20, color: '#1F6FEB', width: 28, textAlign: 'right' },
-  empty: { textAlign: 'center', color: '#888', marginTop: 24 },
-  error: { color: '#C62828', paddingHorizontal: 16, marginBottom: 8 },
+  rowName: { fontSize: 16, fontWeight: '600', color: colors.text },
+  rowPhone: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+  check: { fontSize: 20, color: colors.primary, width: 28, textAlign: 'right' },
+  empty: { textAlign: 'center', color: colors.textTertiary, marginTop: 24 },
+  error: { color: colors.errorText, paddingHorizontal: 16, marginBottom: 8 },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
     padding: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   primary: {
     flex: 1,
-    backgroundColor: '#1F6FEB',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -411,7 +419,7 @@ const styles = StyleSheet.create({
   primaryText: { color: '#FFF', fontWeight: '600', fontSize: 16 },
   primaryDisabled: { opacity: 0.6 },
   secondary: { flex: 1, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  secondaryText: { color: '#1F6FEB', fontWeight: '600', fontSize: 16 },
+  secondaryText: { color: colors.primary, fontWeight: '600', fontSize: 16 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -420,12 +428,13 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   overlayBox: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.background,
     borderRadius: 16,
     paddingVertical: 32,
     paddingHorizontal: 40,
     alignItems: 'center',
     gap: 16,
   },
-  overlayText: { fontSize: 16, fontWeight: '600', color: '#333' },
-});
+  overlayText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  });
+}
