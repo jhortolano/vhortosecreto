@@ -655,13 +655,23 @@ export default function VoteScreen() {
                       )}
                     </View>
                   </View>
+                  {encuesta.finalizada && (
+                    <View style={styles.optionStats}>
+                      <View style={styles.barBg}>
+                        <View style={[styles.barFill, isWinner && styles.barFillWinner, { width: `${pct}%` }]} />
+                      </View>
+                      <Text style={[styles.voteCount, isWinner && styles.voteCountWinner]}>
+                        {op.total_votos} ({pct}%)
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </Pressable>
             );
           })}
         </View>
 
-        {!showVoteUI && (
+        {!showVoteUI && !encuesta.finalizada && (
           <View style={styles.insightsContainer}>
             {esOwner && encuesta?.abierta && !encuesta.finalizada && (
               <View style={styles.openOwnerBanner}>
