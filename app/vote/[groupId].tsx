@@ -678,10 +678,9 @@ export default function VoteScreen() {
         {!showVoteUI && !encuesta.finalizada && (
           <View style={styles.insightsContainer}>
             {esOwner && encuesta?.abierta && !encuesta.finalizada && (
-              <View style={styles.openOwnerBanner}>
-                <MaterialIcons name="info-outline" size={20} color="#E65100" />
-                <Text style={styles.openOwnerBannerText}>
-                  Esta es una encuesta abierta. Debes finalizarla de forma manual para mostrar los resultados.
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', lineHeight: 16 }}>
+                  {t('ownerMustFinalize')}
                 </Text>
               </View>
             )}
@@ -696,24 +695,27 @@ export default function VoteScreen() {
 
               if (first && second && first.total_votos > second.total_votos) {
                 const diffPct = Math.round(((first.total_votos - second.total_votos) / second.total_votos) * 100);
-                let text: string;
-                if (diffPct >= 100) text = 'La opción líder tiene bastante más apoyo que las demás.';
-                else if (diffPct >= 50) text = 'La opción líder va claramente por delante.';
-                else if (diffPct >= 25) text = 'La opción líder tiene una ventaja notable sobre las demás.';
-                else if (diffPct >= 10) text = 'La opción líder tiene una ligera ventaja sobre las demás.';
-                else text = 'No hay una diferencia significativa entre las opciones.';
+                let textKey: string;
+                if (diffPct >= 100) textKey = 'trend_veryHigh';
+                else if (diffPct >= 50) textKey = 'trend_high';
+                else if (diffPct >= 25) textKey = 'trend_notable';
+                else if (diffPct >= 10) textKey = 'trend_slight';
+                else textKey = 'trend_close';
                 cards.push({
                   icon: 'trending-up',
-                  title: 'Tendencia actual',
-                  text,
+                  title: t('trendTitle'),
+                  text: t(textKey),
                 });
               }
 
               if (sinVotos.length > 0) {
+                const noVotesText = sinVotos.length === 1
+                  ? t('noVotes_singular')
+                  : t('noVotes_plural').replace('{count}', String(sinVotos.length));
                 cards.push({
                   icon: 'help-outline',
-                  title: 'Sin votos',
-                  text: `Actualmente hay ${sinVotos.length === 1 ? 'una opción que aún no ha recibido ningún voto' : `${sinVotos.length} opciones que aún no han recibido ningún voto`}.`,
+                  title: t('noVotesTitle'),
+                  text: noVotesText,
                 });
               }
 
@@ -723,54 +725,32 @@ export default function VoteScreen() {
                 const totalV = totalVotos;
                 const pctFirst = totalV > 0 ? (first.total_votos / totalV) * 100 : 0;
 
+                let milestoneTextKey: string;
                 if (first.total_votos >= third.total_votos * 2) {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'La distancia entre la primera y la última opción es considerable.',
-                  });
+                  milestoneTextKey = 'milestone_wideGap';
                 } else if (spread <= 1 && first.total_votos > third.total_votos) {
-                  cards.push({
-                    icon: 'whatshot',
-                    title: 'Hito',
-                    text: 'Las primeras opciones están muy igualadas.',
-                  });
+                  milestoneTextKey = 'milestone_tight';
                 } else if (second.total_votos === third.total_votos && spread > 1) {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'Hay un empate entre la segunda y tercera opción.',
-                  });
+                  milestoneTextKey = 'milestone_secondTie';
                 } else if (pctFirst < 35) {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'Ninguna opción acapara la mayoría, cualquiera puede ganar.',
-                  });
+                  milestoneTextKey = 'milestone_noMajority';
                 } else if (midGap >= 2 && spread > 2) {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'Hay una diferencia notable entre la segunda y tercera opción.',
-                  });
+                  milestoneTextKey = 'milestone_midGap';
                 } else if (second.total_votos > third.total_votos && first.total_votos > second.total_votos + 1) {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'Se empieza a dibujar una clara jerarquía entre las opciones.',
-                  });
+                  milestoneTextKey = 'milestone_hierarchy';
                 } else {
-                  cards.push({
-                    icon: 'auto-awesome',
-                    title: 'Hito',
-                    text: 'Los votos están bastante repartidos entre las opciones.',
-                  });
+                  milestoneTextKey = 'milestone_spread';
                 }
+                cards.push({
+                  icon: 'auto-awesome',
+                  title: t('milestoneTitle'),
+                  text: t(milestoneTextKey),
+                });
               }
 
               return cards.length > 0 ? (
                 <View style={styles.insightsInner}>
-                  <Text style={styles.insightsTitle}>Tendencias</Text>
+                  <Text style={styles.insightsTitle}>{t('insightsTitle')}</Text>
                   {cards.map((card, i) => (
                     <View key={i} style={styles.insightCard}>
                       <MaterialIcons name={card.icon as any} size={22} color="#1F6FEB" />
@@ -783,6 +763,20 @@ export default function VoteScreen() {
                 </View>
               ) : null;
             })()}
+            {!esOwner && encuesta?.abierta && !encuesta.finalizada && hasVoted && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', lineHeight: 16 }}>
+                  {t('openAwaitingOwner')}
+                </Text>
+              </View>
+            )}
+            {!encuesta.abierta && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'center', lineHeight: 16 }}>
+                  {t('autoFinalizeInfo')}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 

@@ -93,8 +93,8 @@ android {
         applicationId 'com.termibululu.vhortosecreto'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 23
-        versionName "1.0.23"
+        versionCode 25
+        versionName "1.0.25"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
