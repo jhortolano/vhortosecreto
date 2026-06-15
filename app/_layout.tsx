@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CreateEncuestaProvider } from '@/context/createEncuestaContext';
 import { checkVersion } from '@/lib/versionCheck';
-import { setupNotificationListeners, savePushToken } from '@/lib/notifications';
+import { setupNotificationListeners, savePushToken, handleInitialNotification } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useT } from '@/lib/i18n';
 import { processQueue } from '@/lib/offlineQueue';
@@ -41,6 +41,7 @@ export default function RootLayout() {
   useEffect(() => {
     console.log('[LAYOUT] RootLayout mounted');
     setupNotificationListeners();
+    handleInitialNotification();
     checkVersion().then((status) => {
       if (status === 'update_required') {
         setVersionBlocked(true);

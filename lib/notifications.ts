@@ -9,6 +9,7 @@ import {
   addNotificationResponseReceivedListener,
   setBadgeCountAsync,
   scheduleNotificationAsync,
+  getLastNotificationResponseAsync,
   AndroidImportance,
   type ExpoPushToken,
   type Notification,
@@ -57,6 +58,15 @@ async function clearBadge(): Promise<void> {
   }
 }
 
+function navigateToEncuesta(response: NotificationResponse): void {
+  const data = response.notification.request.content.data as Record<string, string> | undefined;
+  const encuestaId = data?.encuesta_id;
+  if (encuestaId) {
+    console.log('[NOTIFICATIONS] Navigating to vote/', encuestaId);
+    router.replace(`/vote/${encuestaId}`);
+  }
+}
+
 export function setupNotificationListeners(): void {
   if (receivedListener) return;
 
@@ -71,12 +81,7 @@ export function setupNotificationListeners(): void {
   responseListener = addNotificationResponseReceivedListener((response: NotificationResponse) => {
     console.log('[NOTIFICATIONS] NOTIFICATION TAPPED:', JSON.stringify(response));
     clearBadge();
-    const data = response.notification.request.content.data as Record<string, string> | undefined;
-    const encuestaId = data?.encuesta_id;
-    if (encuestaId) {
-      console.log('[NOTIFICATIONS] Navigating to vote/', encuestaId);
-      router.push(`/vote/${encuestaId}`);
-    }
+    navigateToEncuesta(response);
   });
 
   appStateListener = AppState.addEventListener('change', (nextState) => {
@@ -85,6 +90,18 @@ export function setupNotificationListeners(): void {
       clearBadge();
     }
   });
+}
+
+export async function handleInitialNotification(): Promise<void> {
+  try {
+    const response = await getLastNotificationResponseAsync();
+    if (response) {
+      console.log('[NOTIFICATIONS] Initial notification response:', JSON.stringify(response));
+      navigateToEncuesta(response);
+    }
+  } catch (e) {
+    console.warn('[NOTIFICATIONS] Error checking initial notification:', e);
+  }
 }
 
 export function cleanupNotificationListeners(): void {
