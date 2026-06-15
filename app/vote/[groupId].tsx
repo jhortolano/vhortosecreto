@@ -455,7 +455,6 @@ export default function VoteScreen() {
 
   const hasVoted = haVotado;
   const showVoteUI = encuesta && !encuesta.finalizada && !hasVoted;
-  const canShowResults = encuesta?.finalizada || !hasVoted || ((encuesta?.personas_votadas ?? 0) >= 4 && ((encuesta?.personas_votadas ?? 0) / (encuesta?.votantes ?? 1)) >= 0.7);
 
   if (isLoading) {
     return (
@@ -618,12 +617,6 @@ export default function VoteScreen() {
           <Text style={styles.votedNotice}>{t('thisPollClosed')}</Text>
         )}
 
-        {hasVoted && !encuesta.finalizada && !canShowResults && (
-          <View style={styles.hiddenNotice}>
-            <Text style={styles.hiddenNoticeText}>{t('votesHidden')}</Text>
-          </View>
-        )}
-
         <View style={styles.optionsContainer}>
           {opciones.map((op) => {
             const isSelected = selectedIds.has(op.id);
@@ -675,7 +668,7 @@ export default function VoteScreen() {
           })}
         </View>
 
-        {!showVoteUI && !encuesta.finalizada && (
+        {!showVoteUI && !encuesta.finalizada && (encuesta?.personas_votadas ?? 0) >= 2 && (
           <View style={styles.insightsContainer}>
             {esOwner && encuesta?.abierta && !encuesta.finalizada && (
               <View style={{ marginBottom: 16 }}>
@@ -963,7 +956,7 @@ export default function VoteScreen() {
           </Pressable>
         )}
 
-        {hasVoted && !encuesta.finalizada && !canShowResults && (
+        {hasVoted && !encuesta.finalizada && !esOwner && (
           <Pressable
             style={[styles.finalizadaDeleteButton, isDeleting && styles.deleteButtonDisabled]}
             disabled={isDeleting}
