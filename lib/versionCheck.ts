@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 
@@ -9,7 +10,7 @@ export async function checkVersion(): Promise<VersionStatus> {
 
     const { data, error } = await supabase
       .from('app_config')
-      .select('value')
+      .select('value, value_android')
       .eq('key', 'min_version')
       .single();
 
@@ -18,7 +19,8 @@ export async function checkVersion(): Promise<VersionStatus> {
       return 'ok';
     }
 
-    const minVersion = data.value;
+    const minVersion = Platform.OS === 'android' ? data.value_android : data.value;
+    if (!minVersion) return 'ok';
 
     const currentParts = current.split('.').map(Number);
     const minParts = minVersion.split('.').map(Number);
