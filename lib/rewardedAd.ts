@@ -5,9 +5,7 @@ import { AdEventType, MobileAds, RewardedAd, RewardedAdEventType } from 'react-n
 // Production IDs: Android ca-app-pub-6861706201921698/5324761288, iOS ca-app-pub-6861706201921698/2894547211
 const AD_UNIT_ID = Platform.OS === 'ios'
   ? 'ca-app-pub-6861706201921698/2894547211'
-  : (__DEV__
-    ? 'ca-app-pub-3940256099942544/5224354917'
-    : 'ca-app-pub-6861706201921698/5324761288');
+  : 'ca-app-pub-6861706201921698/5324761288';
 
 let initPromise: Promise<void> | null = null;
 
