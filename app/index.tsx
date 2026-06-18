@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   InputAccessoryView,
@@ -191,7 +191,6 @@ export default function LoginScreen() {
     router.replace(next === 'groups' ? '/groups' : '/complete-profile');
   };
 
-  const linkingSubscription = useRef<{ remove: () => void } | null>(null);
 
   const signInWithGoogle = async () => {
     setErrorMessage('');
@@ -216,39 +215,19 @@ export default function LoginScreen() {
       console.log('[OAuth] Opening browser...');
 
       const authUrl = await new Promise<string | null>((resolve) => {
-        linkingSubscription.current = ExpoLinking.addEventListener('url', ({ url }) => {
-          console.log('[OAuth] Linking event received:', url);
-          if (url.startsWith(redirectTo)) {
-            console.log('[OAuth] Redirect matched!');
-            linkingSubscription.current?.remove();
-            linkingSubscription.current = null;
-            resolve(url);
-          }
-        });
-
         WebBrowser.openAuthSessionAsync(data.url, redirectTo).then((result) => {
           console.log('[OAuth] openAuthSessionAsync result:', result.type);
-          if (result.type === 'success') {
-            if (result.url) {
-              console.log('[OAuth] Got URL from openAuthSessionAsync:', result.url);
-              linkingSubscription.current?.remove();
-              linkingSubscription.current = null;
-              resolve(result.url);
-            }
+          if (result.type === 'success' && result.url) {
+            console.log('[OAuth] Got URL from openAuthSessionAsync:', result.url);
+            resolve(result.url);
           } else {
-            linkingSubscription.current?.remove();
-            linkingSubscription.current = null;
             resolve(null);
           }
         });
 
         setTimeout(() => {
           console.log('[OAuth] Timeout reached');
-          if (linkingSubscription.current) {
-            linkingSubscription.current.remove();
-            linkingSubscription.current = null;
-            resolve(null);
-          }
+          resolve(null);
         }, 120000);
       });
 
