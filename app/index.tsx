@@ -226,27 +226,21 @@ export default function LoginScreen() {
           }
         });
 
-        if (Platform.OS === 'ios') {
-          WebBrowser.openAuthSessionAsync(data.url, redirectTo).then((result) => {
-            console.log('[OAuth] openAuthSessionAsync result:', result.type);
-            if (result.type === 'success') {
-              if (result.url) {
-                console.log('[OAuth] Got URL from openAuthSessionAsync:', result.url);
-                linkingSubscription.current?.remove();
-                linkingSubscription.current = null;
-                resolve(result.url);
-              }
-            } else {
+        WebBrowser.openAuthSessionAsync(data.url, redirectTo).then((result) => {
+          console.log('[OAuth] openAuthSessionAsync result:', result.type);
+          if (result.type === 'success') {
+            if (result.url) {
+              console.log('[OAuth] Got URL from openAuthSessionAsync:', result.url);
               linkingSubscription.current?.remove();
               linkingSubscription.current = null;
-              resolve(null);
+              resolve(result.url);
             }
-          });
-        } else {
-          WebBrowser.openBrowserAsync(data.url).catch(() => {
-            console.log('[OAuth] openBrowserAsync error');
-          });
-        }
+          } else {
+            linkingSubscription.current?.remove();
+            linkingSubscription.current = null;
+            resolve(null);
+          }
+        });
 
         setTimeout(() => {
           console.log('[OAuth] Timeout reached');
