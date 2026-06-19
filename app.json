@@ -2,7 +2,7 @@
   "expo": {
     "name": "Voto Secreto",
     "slug": "VhortoSecreto",
-    "version": "1.0.29",
+    "version": "1.0.31",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vhortosecreto",
@@ -11,15 +11,19 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.termibululu.vhortosecreto",
-      "buildNumber": "17",
-      "associatedDomains": ["applinks:vhortosecreto.vercel.app"],
+      "buildNumber": "19",
+      "associatedDomains": [
+        "applinks:vhortosecreto.vercel.app"
+      ],
       "infoPlist": {
         "CFBundleDisplayName": "Voto Secreto",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
-      "versionCode": 29,
+      "versionCode": 31,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -50,7 +54,40 @@
               "pathPrefix": "/open"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "vhortosecreto",
+              "host": "auth",
+              "pathPrefix": "/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "vhortosecreto.vercel.app",
+              "pathPrefix": "/auth/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -137,7 +174,15 @@
         }
       ],
       "./plugins/withLocalizedAppName",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

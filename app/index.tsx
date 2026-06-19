@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
+  EmitterSubscription,
   Image,
   InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
+  NativeEventSubscription,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +16,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
 import { useHeaderHeight } from '@react-navigation/elements';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -41,7 +46,6 @@ export default function LoginScreen() {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [sessionChecked, setSessionChecked] = useState(false);
-
 
   useEffect(() => {
     const redirectIfSession = async () => {
@@ -197,8 +201,9 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const redirectTo = ExpoLinking.createURL('/auth/callback');
-      console.log('[OAuth] redirectTo:', redirectTo);
+      const redirectTo = Platform.OS === 'android'
+        ? ExpoLinking.createURL('/auth/callback')
+        : 'vhortosecreto://auth/callback';
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -206,36 +211,73 @@ export default function LoginScreen() {
       });
 
       if (error || !data?.url) {
-        console.log('[OAuth] Error getting auth URL:', error?.message);
         setErrorMessage(error?.message ?? t('error'));
         setIsLoading(false);
         return;
       }
 
-      console.log('[OAuth] Opening browser...');
+      let authUrl: string | null = null;
 
-      const authUrl = await new Promise<string | null>((resolve) => {
-        WebBrowser.openAuthSessionAsync(data.url, redirectTo).then((result) => {
-          console.log('[OAuth] openAuthSessionAsync result:', result.type);
-          if (result.type === 'success' && result.url) {
-            console.log('[OAuth] Got URL from openAuthSessionAsync:', result.url);
-            resolve(result.url);
-          } else {
-            resolve(null);
-          }
+      if (Platform.OS === 'android') {
+        const androidRedirect = 'https://vhortosecreto.vercel.app/auth/callback';
+        let openUrl = data.url;
+        try {
+          const parsed = new URL(data.url);
+          parsed.searchParams.set('redirect_to', androidRedirect);
+          parsed.searchParams.set('query_params', JSON.stringify({ prompt: 'select_account' }));
+          openUrl = parsed.toString();
+        } catch {}
+
+        const linkingSubRef = { current: null as EmitterSubscription | null };
+        const appStateSubRef = { current: null as NativeEventSubscription | null };
+        let cancelled = false;
+
+        const resultPromise = new Promise<string | null>((resolve) => {
+          const handler = (event: { url: string }) => {
+            if (event.url.startsWith(androidRedirect) || event.url.startsWith('vhortosecreto://auth/callback') || event.url.startsWith('vhortosecreto:///auth/callback')) {
+              cancelled = true;
+              linkingSubRef.current?.remove();
+              appStateSubRef.current?.remove();
+              resolve(event.url);
+            }
+          };
+          linkingSubRef.current = Linking.addEventListener('url', handler);
+
+          appStateSubRef.current = AppState.addEventListener('change', (state) => {
+            if (state === 'active' && !cancelled) {
+              cancelled = true;
+              linkingSubRef.current?.remove();
+              appStateSubRef.current?.remove();
+              resolve(null);
+            }
+          });
         });
 
-        setTimeout(() => {
-          console.log('[OAuth] Timeout reached');
-          resolve(null);
-        }, 120000);
-      });
+        const timeout = new Promise<null>((resolve) => {
+          setTimeout(() => {
+            if (!cancelled) {
+              cancelled = true;
+              linkingSubRef.current?.remove();
+              appStateSubRef.current?.remove();
+              resolve(null);
+            }
+          }, 120000);
+        });
 
-      console.log('[OAuth] authUrl received:', authUrl ? 'yes' : 'no');
+        await WebBrowser.openBrowserAsync(openUrl);
+
+        const matchedUrl = await Promise.race([resultPromise, timeout]);
+
+        authUrl = matchedUrl;
+      } else {
+        const iosResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (iosResult.type === 'success') {
+          authUrl = iosResult.url;
+        }
+      }
 
       if (authUrl) {
         const hashIndex = authUrl.indexOf('#');
-
         if (hashIndex !== -1 && authUrl.includes('access_token=')) {
           const fragment = authUrl.substring(hashIndex + 1);
           const params: Record<string, string> = {};
@@ -243,37 +285,27 @@ export default function LoginScreen() {
             const eq = p.indexOf('=');
             if (eq > 0) params[decodeURIComponent(p.slice(0, eq))] = decodeURIComponent(p.slice(eq + 1));
           });
-          console.log('[OAuth] Tokens from fragment:', Object.keys(params).join(', '));
           if (params.access_token && params.refresh_token) {
             await supabase.auth.setSession({
               access_token: params.access_token,
               refresh_token: params.refresh_token,
             });
-            console.log('[OAuth] Session set via setSession');
           }
         } else if (authUrl.includes('?code=')) {
-          try {
-            await supabase.auth.exchangeCodeForSession(authUrl);
-            console.log('[OAuth] Code exchanged successfully');
-          } catch (exchangeError) {
-            console.log('[OAuth] exchangeCodeForSession error:', exchangeError);
-          }
+          try { await supabase.auth.exchangeCodeForSession(authUrl); } catch (_e) {}
         }
 
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        console.log('[OAuth] Session exists:', !!session?.user);
         if (session?.user) {
           savePushToken(session.user.id);
           const next = await routeAfterAuth(session.user.id);
-          console.log('[OAuth] Redirecting to:', next);
           router.replace(next === 'groups' ? '/groups' : '/complete-profile');
           return;
         }
       }
     } catch (e) {
-      console.log('[OAuth] Catch error:', e);
       setErrorMessage(e instanceof Error ? e.message : t('error'));
     } finally {
       setIsLoading(false);
@@ -434,7 +466,6 @@ export default function LoginScreen() {
           {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
         </View>
       </ScrollView>
-
 
     </KeyboardAvoidingView>
   );

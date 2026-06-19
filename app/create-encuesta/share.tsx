@@ -21,7 +21,6 @@ export default function ShareScreen() {
     try {
       await Share.share({
         message: `${titulo || 'Votación'}\n\n${deepLink}`,
-        url: deepLink,
       });
     } catch {}
   };

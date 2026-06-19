@@ -63,13 +63,15 @@ key (PK), value
 - Package/bundle ID: `com.termibululu.vhortosecreto`
 - Supabase project: `jheujtrgjwoflanbmzqu.supabase.co`
 - EAS project ID: `39b9d279-72d2-4793-9fdc-8de00d760785`
-- Version: 1.0.17 (Android versionCode: 17, iOS build: 5)
+- Version: 1.0.29 (Android versionCode: 29, iOS build: 17)
 
 ## Auth flow
 - Login: email → OTP → verify → check profile completeness → redirect
-- Google OAuth: WebBrowser → deep link → setSession → redirect
+- Google OAuth (iOS): `openAuthSessionAsync` → custom scheme `vhortosecreto://auth/callback` → `setSession`
+- Google OAuth (Android): `openBrowserAsync` + `Linking.addEventListener` → modifica `redirect_to` a HTTPS → Supabase redirect a `https://vhortosecreto.vercel.app/auth/callback` → App Links + `intent://` scheme abren la app
 - Profile check: `isProfileComplete()` checks phone + nick exist (avatar optional)
 - Trigger `on_auth_user_created` was DROPPED — profiles created only via registration form
+- Supabase allowed redirect URLs debe incluir `https://vhortosecreto.vercel.app/auth/callback`
 
 ## RLS policies
 Tables use RLS. Notable policies:
@@ -119,6 +121,7 @@ When user changes nick in profile.tsx or completes profile in complete-profile.t
 - **Android solo**: `bash scripts/build-android.sh` → AAB + APK
 - **iOS solo**: `npx expo prebuild --clean` → open Xcode → Product → Archive → Distribute
 - Keystore: `release.keystore` (alias: vhortosecreto, pass: julian1234)
+- iOS required: `expo-build-properties` con `ios.useFrameworks: "static"` en app.json para evitar error de Swift pod `AppCheckCore`
 
 ## Offline support
 - Auth: `getUserId()` tries `getUser()` first, falls back to `getSession()` (local file storage via `supabaseAuthStorage`)
